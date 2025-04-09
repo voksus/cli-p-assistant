@@ -3,8 +3,6 @@
 # It contains the data and the logic of the app
 
 import pickle
-import shutil
-import os
 from datetime import date
 import re
 
@@ -66,27 +64,20 @@ class Contact:
 
 # ================ AdressBook Class ================
 class AdressBook:
-    def __init__(self, autosave_callback=None):
+    def __init__(self):
         self.contacts : list[Contact] = []
-        self.autosave_callback = autosave_callback
-
-    def _autosave(self):
-        if self.autosave_callback:
-            self.autosave_callback()
 
     # ================ Contact CRUD methods ================
     # Add contact to address book
     def add_contact(self, contact: Contact):
         # TODO: Check for duplicate contacts
         self.contacts.append(contact)
-        self._autosave()
 
     # Remove contact by the contact object itself (found previously)
     def remove_contact(self, contact: Contact):
         # TODO: Handle case where contact is not in list? (Shouldn't happen if logic is correct)
         try:
             self.contacts.remove(contact)
-            self._autosave()
         except ValueError:
             raise NotFoundError("contact_not_found_in_list")
 
@@ -226,20 +217,14 @@ class Note:
 
 # ================ Notebook Class ================
 class Notebook:
-    def __init__(self, autosave_callback=None):
+    def __init__(self):
         self.notes : list[Note] = []
-        self.autosave_callback = autosave_callback
-
-    def _autosave(self):
-        if self.autosave_callback:
-            self.autosave_callback()
 
     # ================ Note CRUD methods ================
     # Add note to notebook
     def add_note(self, note: Note):
         # TODO: Check for duplicate notes? (e.g., by title) - Define policy
         self.notes.append(note)
-        self._autosave()
 
     # Change note title
     def change_note_title(self, note: Note, new_title: str):
@@ -258,7 +243,6 @@ class Notebook:
         # TODO: Handle case where note is not in list?
         try:
             self.notes.remove(note)
-            self._autosave()
         except ValueError:
             raise NotFoundError("note_not_found_in_list")
 
@@ -312,76 +296,41 @@ class Notebook:
 
 
 # ================ Data Persistence ================
-def save_data_to_file(address_book: AdressBook, notebook: Notebook, file_path: str = FILE_PATH):
-    try:
-        # Backup the current data
-        if os.path.exists(file_path):
-            backup_path = file_path + ".bak"
-            shutil.copy(file_path, backup_path)
-            print(f"Backup saved to {backup_path}")
-
-        # Data to be saved
-        data = {
-            "address_book": address_book,
-            "notebook": notebook,
-            "contact_id_counter": Contact.id_counter,
-            "note_id_counter": Note.id_counter,
-            "version": 1
-        }
-
-        # Save the data
-        with open(file_path, "wb") as f:
-            pickle.dump(data, f)
-            print(f"Data saved to {file_path}")
-
-    except (pickle.PicklingError, IOError) as e:
-        print(f"Error saving data: {e}")
-    except Exception as e:
-        print(f"Unexpected error saving data: {e}")
-
-
-def reset_data(file_path: str = FILE_PATH):
-    """Completely clears the data and saves empty objects."""
-    Contact.id_counter = 0
-    Note.id_counter = 0
-    address_book = AdressBook()
-    notebook = Notebook()
-    save_data_to_file(address_book, notebook, file_path)
-    print("Data has been reset.")
-
-
-# ================ Load Data From File ================
+# Load data from file and return AdressBook and Notebook objects
 def load_data_from_file(file_path: str = FILE_PATH) -> tuple[AdressBook, Notebook]:
     try:
         with open(file_path, "rb") as f:
-            data = pickle.load(f)
-            address_book = data["address_book"]
-            notebook = data["notebook"]
-            Contact.id_counter = data["contact_id_counter"]
-            Note.id_counter = data["note_id_counter"]
+            # TODO: Consider adding versioning or more robust error handling for pickle
+            address_book, notebook = pickle.load(f)
+            # TODO: Potentially load and restore id_counters for Contact and Note here
+            # ...
         return address_book, notebook
     except FileNotFoundError:
         return AdressBook(), Notebook()
     except (pickle.UnpicklingError, EOFError, ImportError, IndexError, AttributeError) as e:
+        # Handle corrupted or incompatible pickle file
+        # TODO: Log the error e for debugging
+        # ...
         return AdressBook(), Notebook()
     except Exception as e:
+        # TODO: Log the error e for debugging
         return AdressBook(), Notebook()
 
 
-# ================ Main Function ================
-def main():
-    address_book, notebook = load_data_from_file()
+# Save AdressBook and Notebook objects to file
+def save_data_to_file(address_book: AdressBook, notebook: Notebook, file_path: str = FILE_PATH):
+    try:
+        with open(file_path, "wb") as f:
+            # TODO: Potentially save id_counters here as well
+            pickle.dump((address_book, notebook), f)
+            print(f"Data saved to {file_path}")
+    except (pickle.PicklingError, IOError) as e:
+        # Handle errors during saving
+        pass
+    except Exception as e:
+        pass
 
-    # Create an autosave function that saves the current state
-    def autosave():
-        save_data_to_file(address_book, notebook)
-
-    # Pass the autosave function into classes
-    address_book._autosave_callback = autosave
-    notebook._autosave_callback = autosave
-
-    # Main application logic (e.g., run_assistant)
-    run_assistant(address_book, notebook)
 
 if __name__ == "__main__":
-    main()
+    import main
+    main.main()
