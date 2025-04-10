@@ -91,8 +91,63 @@ def handle_change_note(note: m.Note):
 
 def handle_remove_base(args: list[str]):
     global current_path, address_book, notebook # Allow access/modification
-    # TODO: Ask "contact" or "note"? Find item, display list, get index, confirm.
-    # ...
+    # Питання: що видалити, контакт чи нотатку
+    choice = input("Що хочете видалити? Введіть 'contact' для контакту або 'note' для нотатки: ").lower()
+
+    if choice == 'contact':
+        if not address_book:  # Перевірка на наявність контактів
+            display_error("not_found")
+            return
+
+        # Виведення контактів
+        display_contacts(address_book)
+
+        # Запит на вибір контакту для видалення
+        contact_index = int(input("Введіть номер контакту для видалення: ")) - 1
+
+        # Перевірка правильності індексу
+        if contact_index < 0 or contact_index >= len(address_book):
+            display_error("invalid_contact_id")
+            return
+
+        contact = address_book[contact_index]
+
+        # Підтвердження видалення
+        if get_confirmation("confirm_prompt", path_info=f"Контакт: {contact.name}"):
+            # Видалення контакту
+            address_book.remove(contact)
+            display_success("contact_deleted", contact_name=contact.name)
+        else:
+            display_info("deletion_cancelled")
+
+    elif choice == 'note':
+        if not notebook:  # Перевірка на наявність нотаток
+            display_error("no_notes_found")
+            return
+
+        # Виведення нотаток
+        display_notes(notebook)
+
+        # Запит на вибір нотатки для видалення
+        note_index = int(input("Введіть номер нотатки для видалення: ")) - 1
+
+        # Перевірка правильності індексу
+        if note_index < 0 or note_index >= len(notebook):
+            display_error("invalid_note_id")
+            return
+
+        note = notebook[note_index]
+
+        # Підтвердження видалення
+        if get_confirmation("confirm_prompt", path_info=f"Нотатка: {note.title}"):
+            # Видалення нотатки
+            notebook.remove(note)
+            display_success("note_deleted", note_title=note.title)
+        else:
+            display_info("deletion_cancelled")
+
+    else:
+        display_error("invalid_command")
     pass
 
 def handle_find_base(args: list[str]):
