@@ -53,71 +53,130 @@ def _get_message(key: str, **kwargs) -> str:
     try:
         return message_template.format_map(kwargs)
     except KeyError as e:
-        pass
+        return f"Error formatting message '{key}': Missing key {e} "
+    except Exception as e:
+        return f"Error formatting message '{key}': {e}"
 
 def display_success(message_key: str, **kwargs):
     """Displays a success message."""
-    print(_get_message(message_key, **kwargs))
+    print(f"{GREEN}{_get_message(message_key, **kwargs)}{RESET}")
 
 def display_warning(message_key: str, **kwargs):
     """Displays a warning message."""
-    print(_get_message(message_key, **kwargs))
+    print(f"{YELLOW}{_get_message(message_key, **kwargs)}{RESET}")
 
 def display_error(message_key: str, **kwargs):
     """Displays an error message."""
-    print(_get_message(message_key, **kwargs))
+    print(f"{RED}{_get_message(message_key, **kwargs)}{RESET}")
 
 def display_info(message_key: str, **kwargs):
     """Displays an informational message or title."""
     # Special handling for titles that might include counts
     count = kwargs.get('count', None)
-    print(_get_message(message_key, count=count, **kwargs))
-
+    print(f"{BLUE}{_get_message(message_key, **kwargs)}{RESET}")
 
 def display_contacts(contacts: list[Contact]):
     """Displays a list of contacts with 1-based indexing."""
-    # TODO: Implement detailed contact formatting with colors, fields, and 1-based indices.
-    #    ...
-
+    if not contacts:
+        display_info("no_contacts_found")
+        return
+    
+    display_info("contact_list_title")
+    print("-" * 40) #Separator
+    for index, contact in enumerate(contacts, start = 1):
+        print(f"{BOLD}{index}.{RESET}{CYAN}[ID: {contact.id}] Name: {contact.name}{RESET}")
+        if contact.phones:
+            phones_str = ", ".join(contact.phones)
+            print(f" Phones:{phones_str}")
+        if contact.emails:
+            emails_str = ", ".join(contact.emails)
+            print(f" Emails:{emails_str}")
+        if contact.birthday:
+            try:
+                birthday_str = contact.birthday.strftime('%d.%m.%Y')
+                print(f"  Birthday: {birthday_str}")
+            except AttributeError:
+                print(f" Birthday: Invalid format date for contact ID {contact.id}")
+        print("-" * 40)
+        
+                
 
 def display_notes(notes: list[Note]):
     """Displays a list of notes with 1-based indexing."""
-    # TODO: Implement detailed note formatting with colors, fields, tags, and 1-based indices.
-    # Example structure:
-    # 1. [ID: 0] Title: Shopping List
-    #      Tags: #groceries #urgent
-    #      Content: Milk, Bread, Eggs...
-    # --------------------
-    # 2. [ID: 1] Title: Meeting Notes
-    #      ...
     if not notes:
         display_info("no_notes_found")
         return
+        
+        
+    display_info("note_list_title")
+    print("-" * 40)
     for index, note in enumerate(notes, start=1):
         # Probably use note.__repr__() for now, replace with proper formatting
-        print(f"{BOLD}{index}.{RESET} {note!r}")
-
+        print(f"{BOLD}{index}.{RESET}{GREEN}[ID: {note.id}] Title: {note.title}{RESET}")
+        if note.tags:
+            tags_str = "".join([f"#{tag}" for tag in note.tags])
+            print(f"       Tags: {YELLOW}{tags_str}{RESET}")
+        if note.content:
+            ## Trim long content for preview
+            content_preview = note.content[:100] + ('...' if len(note.content) > 100 else '')
+            # Output the content with indentation, possibly handling line breaks
+            print(f"      Content: {content_preview.replace(chr(10), chr(10) + ' ' * 15)}")
+            
+        print("-" * 40)   
 
 def display_birthdays(birthday_results: list[tuple[date | None]]):
     """Displays upcoming birthdays with celebration dates."""
-    # TODO: Implement formatting for birthday list.
-    # Example structure:
-    # Upcoming Birthdays:
-    # - John Doe: 15.08 (Celebration: 15.08)
-    # - Jane Smith: 20.08 (Weekend Birthday - Celebration: Monday 22.08)
+    
     if not birthday_results:
         display_info("no_upcoming_birthdays")
         return
     display_info("birthdays_found_title")
-    # TODO: Implement the actual display logic
+    for contact, celebration_date in birthday_results:
+        try:
+            original_bday_str = contact.birthday.strftime('%d.%m') 
+            weekday_name = contact.birthday.strftime('%A')
+            
+            if celebration_date:
+               celebration_day_str = celebration_date.strftime('%d.%m')
+               celebration_weekday = celebration_date.strftime('%A') 
+               message = _get_message("birthday_celebration_adjusted",
+                                      name=contact.name,
+                                      bday=original_bday_str,
+                                      bday_weekday=weekday_name,
+                                      celeb_weekday=celebration_weekday)
+               print(f"- {message}")
+            else: 
+                #use our key from dictionary MESSAGE
+                message = _get_message("birthday_celebration_on_day",
+                                        name=contact.name,
+                                        bday=original_bday_str,
+                                        bday_weekday=weekday_name)
+                print(f"- {message}")
+        except ArithmeticError:
+            print(f"- Error processing birthday for contact: {contact.name} (ID: {contact.id})")
+            #when we don't have key in MESSAGES
+        except KeyError as e:
+            print(f"- Error displaying birthday: Missing message key {e}")
 
-
-def display_help():
+def display_help(command_map= None): #command structure as an argument
     """Displays available commands and their descriptions."""
-    # TODO: Implement formatting for help message
-    print(f"{BLUE}Available Commands:{RESET}")
-    # ...
-    pass
+    display_info("help_title")
+    
+    if command_map is None:
+        print("  Help information is currently unavailable.")
+        return
+    print(f"  {YELLOW}Usage: command [arguments...]{RESET}")
+    print("-" * 40)
+    
+    for command, details in command_map.items():
+        description = details.get('description', 'No description available.') if isinstance(details, dict) else details
+        example = details.get('example', '') if isinstance(details, dict) else ''
+        
+        print(f"  {BOLD}{command}{RESET}:")
+        print(f"    {description}")
+        if example:
+             print(f"    {CYAN}Example: {example}{RESET}")
+        print("-" * 20)
 
 # ================ Input Functions ================
 
