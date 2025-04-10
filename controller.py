@@ -70,23 +70,128 @@ def handle_add_note():
     pass
 
 def handle_change_base(args: list[str]):
-    global current_path # Allow modification
-    # TODO: Ask "contact" or "note"? Find item, display list, get index.
-    # ...
+    global current_path, address_book, notebook # Allow modification
+    # Запит на вибір між контактами або нотатками
+    choice = input("Що хочете змінити? Введіть 'contact' для контакту або 'note' для нотатки: ").lower()
+
+    if choice == 'contact':
+        if not address_book:  # Перевірка на наявність контактів
+            display_error("no_contacts_found")
+            return
+
+        # Виведення списку контактів
+        display_contacts(address_book)
+
+        # Запит на вибір контакту для зміни
+        contact_index = int(input("Введіть номер контакту для зміни: ")) - 1
+
+        # Перевірка правильності індексу
+        if contact_index < 0 or contact_index >= len(address_book):
+            display_error("invalid_contact_id")
+            return
+
+        contact = address_book[contact_index]
+
+        # Виклик функції для зміни контакту
+        handle_change_contact(contact)
+
+    elif choice == 'note':
+        if not notebook:  # Перевірка на наявність нотаток
+            display_error("no_notes_found")
+            return
+
+        # Виведення списку нотаток
+        display_notes(notebook)
+
+        # Запит на вибір нотатки для зміни
+        note_index = int(input("Введіть номер нотатки для зміни: ")) - 1
+
+        # Перевірка правильності індексу
+        if note_index < 0 or note_index >= len(notebook):
+            display_error("invalid_note_id")
+            return
+
+        note = notebook[note_index]
+
+        # Виклик функції для зміни нотатки
+        handle_change_note(note)
+
+    else:
+        display_error("invalid_command")
     pass
 
 def handle_change_contact(contact: m.Contact):
     global current_path, address_book, notebook # Allow access
-    # Path is ["change", contact.name]
-    # TODO: Loop asking what to change (phone, email, birthday, name?)
-    # ...
+    # Виведення поточних даних контакту
+    display_info("editing_contact", contact_name=contact.name)
+
+    # Цикл для зміни полів
+    while True:
+        print(f"Поточні дані: {contact}")
+        field = input("Що хочете змінити? (name, phone, email, birthday або 'exit' для виходу): ").lower()
+
+        if field == 'name':
+            new_name = input(f"Введіть нове ім'я (поточне: {contact.name}): ")
+            contact.name = new_name
+
+        elif field == 'phone':
+            new_phone = input(f"Введіть новий номер телефону (поточний: {contact.phone}): ")
+            contact.phone = new_phone
+
+        elif field == 'email':
+            new_email = input(f"Введіть новий email (поточний: {contact.email}): ")
+            contact.email = new_email
+
+        elif field == 'birthday':
+            new_birthday = input(f"Введіть нову дату народження (поточна: {contact.birthday}): ")
+            contact.birthday = new_birthday
+
+        elif field == 'exit':
+            # Підтвердження зміни
+            if get_confirmation("confirm_prompt", path_info=f"Контакт: {contact.name}"):
+                display_success("contact_changed", contact_name=contact.name)
+                break
+            else:
+                display_info("change_cancelled")
+                break
+
+        else:
+            display_error("invalid_command")
     pass
 
 def handle_change_note(note: m.Note):
     global current_path, notebook, address_book # Allow access
-    # Path is ["change", "note", note.title]
-    # TODO: Loop asking what to change (title, content, tags?)
-    # Handle sub-commands, call model, validate, handle errors, save, display results
+    # Виведення поточних даних нотатки
+    display_info("editing_note", note_title=note.title)
+
+    # Цикл для зміни полів
+    while True:
+        print(f"Поточні дані: {note}")
+        field = input("Що хочете змінити? (title, content, tags або 'exit' для виходу): ").lower()
+
+        if field == 'title':
+            new_title = input(f"Введіть новий заголовок (поточний: {note.title}): ")
+            note.title = new_title
+
+        elif field == 'content':
+            new_content = input(f"Введіть новий вміст нотатки (поточний: {note.content}): ")
+            note.content = new_content
+
+        elif field == 'tags':
+            new_tags = input(f"Введіть нові теги (поточні: {', '.join(note.tags)}): ")
+            note.tags = new_tags.split(", ")
+
+        elif field == 'exit':
+            # Підтвердження зміни
+            if get_confirmation("confirm_prompt", path_info=f"Нотатка: {note.title}"):
+                display_success("note_changed", note_title=note.title)
+                break
+            else:
+                display_info("change_cancelled")
+                break
+
+        else:
+            display_error("invalid_command")
     pass
 
 def handle_remove_base(args: list[str]):
