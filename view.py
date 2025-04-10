@@ -32,16 +32,33 @@ MESSAGES: dict[str, str] = {
     "input_prompt_default": "{path} / {prompt}: ",
     "input_path_separator": " > ",
 
-    # --- Success Messages ---
+   # --- Success Messages ---
+"contact_added"          : f"{GREEN}✅ Contact added successfully!{RESET}",
+"note_saved"             : f"{GREEN}📝 Note saved successfully!{RESET}",
+"contact_deleted"        : f"{GREEN}🗑️ Contact deleted.{RESET}",
+"note_deleted"           : f"{GREEN}🗑️ Note deleted.{RESET}",
+"data_updated"           : f"{GREEN}✅ Data updated successfully.{RESET}",
 
+# --- Info/Title Messages ---
+"no_notes_found"         : f"{YELLOW}📭 No notes to display.{RESET}",
+"no_upcoming_birthdays"  : f"{YELLOW}🎂 No upcoming birthdays.{RESET}",
+"birthdays_found_title"  : f"{BLUE}🎉 Upcoming Birthdays:{RESET}",
+"contacts_list_title"    : f"{BLUE}📇 Contact List:{RESET}",
+"notes_list_title"       : f"{BLUE}📒 Notes List:{RESET}",
+"help_intro"             : f"{BLUE}🔧 Available commands:{RESET}",
 
-    # --- Info/Title Messages ---
+# --- Warning Messages ---
+"field_required"         : f"{YELLOW}⚠️ This field is required!{RESET}",
+"confirm_deletion"       : f"{YELLOW}⚠️ Are you sure you want to delete this entry?{RESET}",
+"duplicate_entry"        : f"{YELLOW}⚠️ This entry already exists.{RESET}",
 
-
-    # --- Warning Messages ---
-
-
-    # --- Error Messages (Keys match exceptions from Model) ---
+# --- Error Messages ---
+"not_found"              : f"{RED}❌ Entry not found.{RESET}",
+"empty_input"            : f"{RED}❌ Empty input provided.{RESET}",
+"invalid_date"           : f"{RED}❌ Invalid date format. Use DD.MM.YYYY.{RESET}",
+"generic_error"          : f"{RED}❌ An error occurred. Please try again.{RESET}",
+"invalid_choice"         : f"{RED}❌ Invalid choice. Please try again.{RESET}",
+"invalid_yes_no"         : f"{RED}❌ Please enter 'yes' or 'no'.{RESET}",
 
 }
 
