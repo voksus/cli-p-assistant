@@ -145,7 +145,7 @@ class AdressBook:
             raise PhoneError("invalid_phone_format")
         if phone_number in contact.phones:
             raise PhoneError("duplicate_phone")
-        contact.phones.append(phone_number)
+        contact.phones.append(phone_number)    
 
     # Change contact phone number by index (0-based)
     def change_phone(self, contact: Contact, phone_index: int, new_phone_number: str):
@@ -155,14 +155,13 @@ class AdressBook:
             raise PhoneError("duplicate_phone")
         if not 0 <= phone_index < len(contact.phones):
             raise IndexError("invalid_phone_index")
-        contact.phones[phone_index] = new_phone_number
+        contact.phones[phone_index] = new_phone_number    
 
     # Remove contact phone number by index (0-based)
     def remove_phone(self, contact: Contact, phone_index: int):
         if not 0 <= phone_index < len(contact.phones):
             raise IndexError("invalid_phone_index")
         contact.phones.pop(phone_index)
-
 
     # ================ Email methods ================
     # Add contact email
@@ -171,7 +170,8 @@ class AdressBook:
             raise EmailError("invalid_email_format")
         if email in contact.emails:
             raise EmailError("duplicate_email")
-        contact.emails.append(email)
+        contact.emails.append(email)    
+
 
     # Change contact email by index (0-based)
     def change_email(self, contact: Contact, email_index: int, new_email: str):
@@ -219,9 +219,11 @@ class Note:
         # Basic string representation
         return f"Note(ID: {self.__id}, Title: {self.title})"
 
+
     def __repr__(self) -> str:
         # Representation useful for developers/debugging
         return f"Note(id={self.__id}, title='{self.title}', content='{self.content[:20]}...', tags={self.tags})"
+
 
 
 # ================ Notebook Class ================
@@ -308,6 +310,7 @@ class Notebook:
 
 
 # ================ Data Persistence ================
+
 def save_data_to_file(address_book: AdressBook, notebook: Notebook, file_path: str = FILE_PATH):
     try:
         # Backup the current data
@@ -381,3 +384,43 @@ def main():
 
 if __name__ == "__main__":
     main()
+=======
+# Load data from file and return AdressBook and Notebook objects
+def load_data_from_file(file_path: str = FILE_PATH) -> tuple[AdressBook, Notebook]:
+    try:
+        with open(file_path, "rb") as f:
+            # TODO: Consider adding versioning or more robust error handling for pickle
+            address_book, notebook = pickle.load(f)
+            # TODO: Potentially load and restore id_counters for Contact and Note here
+            # ...
+        return address_book, notebook
+    except FileNotFoundError:
+        return AdressBook(), Notebook()
+    except (pickle.UnpicklingError, EOFError, ImportError, IndexError, AttributeError) as e:
+        # Handle corrupted or incompatible pickle file
+        # TODO: Log the error e for debugging
+        # ...
+        return AdressBook(), Notebook()
+    except Exception as e:
+        # TODO: Log the error e for debugging
+        return AdressBook(), Notebook()
+
+
+# Save AdressBook and Notebook objects to file
+def save_data_to_file(address_book: AdressBook, notebook: Notebook, file_path: str = FILE_PATH):
+    try:
+        with open(file_path, "wb") as f:
+            # TODO: Potentially save id_counters here as well
+            pickle.dump((address_book, notebook), f)
+            print(f"Data saved to {file_path}")
+    except (pickle.PicklingError, IOError) as e:
+        # Handle errors during saving
+        pass
+    except Exception as e:
+        pass
+
+
+if __name__ == "__main__":
+    import main
+    main.main()
+

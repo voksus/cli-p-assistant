@@ -60,6 +60,7 @@ MESSAGES: dict[str, str] = {
 "invalid_choice"         : f"{RED}❌ Invalid choice. Please try again.{RESET}",
 "invalid_yes_no"         : f"{RED}❌ Please enter 'yes' or 'no'.{RESET}",
 
+
 }
 
 # ================ Display Functions ================
@@ -171,7 +172,6 @@ def get_confirmation(prompt_key: str, **prompt_kwargs) -> bool:
             return False
         else:
             display_warning("invalid_yes_no", expected_yes=yes_answer, expected_no=no_answer) # The key "invalid_yes_no" is required.
-
 
 
 if __name__ == "__main__":
