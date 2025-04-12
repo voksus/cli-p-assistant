@@ -303,45 +303,6 @@ class Notebook:
 
 
 # ================ Data Persistence ================
-def save_data_to_file(address_book: AdressBook, notebook: Notebook, file_path: str = FILE_PATH):
-    try:
-        # Backup the current data
-        if os.path.exists(file_path):
-            backup_path = file_path + ".bak"
-            shutil.copy(file_path, backup_path)
-            print(f"Backup saved to {backup_path}")
-
-        # Data to be saved
-        data = {
-            "address_book": address_book,
-            "notebook": notebook,
-            "contact_id_counter": Contact.id_counter,
-            "note_id_counter": Note.id_counter,
-            "version": 1
-        }
-
-        # Save the data
-        with open(file_path, "wb") as f:
-            pickle.dump(data, f)
-            print(f"Data saved to {file_path}")
-
-    except (pickle.PicklingError, IOError) as e:
-        print(f"Error saving data: {e}")
-    except Exception as e:
-        print(f"Unexpected error saving data: {e}")
-
-
-def reset_data(file_path: str = FILE_PATH):
-    """Completely clears the data and saves empty objects."""
-    Contact.id_counter = 0
-    Note.id_counter = 0
-    address_book = AdressBook()
-    notebook = Notebook()
-    save_data_to_file(address_book, notebook, file_path)
-    print("Data has been reset.")
-
-
-# ================ Data Persistence ================
 # Load data from file and return AdressBook and Notebook objects
 def load_data_from_file(file_path: str = FILE_PATH) -> tuple[AdressBook, Notebook]:
     try:
@@ -362,7 +323,6 @@ def load_data_from_file(file_path: str = FILE_PATH) -> tuple[AdressBook, Noteboo
         # TODO: Log the error e for debugging
         return AdressBook(), Notebook()
 
-
 # Save AdressBook and Notebook objects to file
 def save_data_to_file(address_book: AdressBook, notebook: Notebook, file_path: str = FILE_PATH):
     try:
@@ -375,6 +335,7 @@ def save_data_to_file(address_book: AdressBook, notebook: Notebook, file_path: s
         pass
     except Exception as e:
         pass
+
 
 if __name__ == "__main__":
     import main
