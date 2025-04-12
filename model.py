@@ -9,6 +9,8 @@ from datetime import date
 import re
 
 FILE_PATH = "data.pkl"  # Path to the data file
+NAME_REGEX = re.compile(r"^[a-zA-Zа-яА-ЯіІїЇєЄґҐʼ'-]+( [a-zA-Zа-яА-ЯіІїЇєЄґҐʼ'-]+)*$")
+EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
 
 # ================ Custom Exceptions ================
 class ContactError(Exception):
@@ -44,7 +46,7 @@ class Contact:
     id_counter = 0 # Consider loading/saving this counter as well
 
     def __init__(self, name: str):
-        if not re.match(r"^[a-zA-Zа-яА-ЯіІїЇєЄґҐʼ'-]+( [a-zA-Zа-яА-ЯіІїЇєЄґҐʼ'-]+)*$", name):
+        if not NAME_REGEX.match(name):
             raise ContactError("invalid_name_format")
         self.__id     : int = Contact.id_counter
         self.name     : str = name
@@ -93,30 +95,60 @@ class AdressBook:
     # ================ Find methods ================
     # Find contact by partial data: name, phone or email
     def find_contacts(self, part: str) -> list[Contact]:
-        # TODO: Implement search logic across name, phones, and emails (case-insensitive?)
+        part = part.lower()
+        if not part.strip():
+            return []
         result : list[Contact] = []
-        # ...
+
+        for contact in self.contacts:
+            if part in contact.name.lower():
+                result.append(contact)
+                continue
+
+            if any(part in phone.lower() for phone in contact.phones):
+                result.append(contact)
+                continue
+
+            if any(part in email.lower() for email in contact.emails):
+                result.append(contact)
+                continue
+        
         return result
 
     # Find contact by name (partial or full)
     def find_contact_by_name(self, name_part: str) -> list[Contact]:
-        # TODO: Implement search logic by name (case-insensitive?)
+        if not name_part.strip():
+            return []
         result : list[Contact] = []
-        # ...
+
+        for contact in self.contacts:
+            if name_part.lower() in contact.name.lower():
+                result.append(contact)
+       
         return result
 
     # Find contact by phone (partial or full)
     def find_contact_by_phone(self, phone_part: str) -> list[Contact]:
-        # TODO: Implement search logic by phone
+        if not phone_part.strip():
+            return []
         result : list[Contact] = []
-        # ...
+
+        for contact in self.contacts:
+            if any(phone_part.lower() in phone.lower() for phone in contact.phones):
+                result.append(contact)
+            
         return result
 
     # Find contact by email (partial or full)
     def find_contact_by_email(self, email_part: str) -> list[Contact]:
-        # TODO: Implement search logic by email (case-insensitive?)
+        if not email_part.strip():
+            return []
         result : list[Contact] = []
-        # ...
+
+        for contact in self.contacts:
+            if any(email_part.lower() in email for email in contact.emails):
+                result.append(contact)
+        
         return result
 
     # Get contacts with birthdays in the next N days
@@ -153,21 +185,21 @@ class AdressBook:
             raise PhoneError("invalid_phone_format")
         if new_phone_number in contact.phones:
             raise PhoneError("duplicate_phone")
-        if not 0 <= phone_index < len(contact.phones):
+        if not 0 <= phone_index -1 < len(contact.phones):
             raise IndexError("invalid_phone_index")
-        contact.phones[phone_index] = new_phone_number
+        contact.phones[phone_index - 1] = new_phone_number
 
     # Remove contact phone number by index (0-based)
     def remove_phone(self, contact: Contact, phone_index: int):
-        if not 0 <= phone_index < len(contact.phones):
+        if not 0 <= phone_index -1 < len(contact.phones):
             raise IndexError("invalid_phone_index")
-        contact.phones.pop(phone_index)
+        contact.phones.pop(phone_index - 1)
 
 
     # ================ Email methods ================
     # Add contact email
     def add_email(self, contact: Contact, email: str):
-        if not re.fullmatch(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", email):
+        if not EMAIL_REGEX.fullmatch(email):
             raise EmailError("invalid_email_format")
         if email in contact.emails:
             raise EmailError("duplicate_email")
@@ -175,19 +207,19 @@ class AdressBook:
 
     # Change contact email by index (0-based)
     def change_email(self, contact: Contact, email_index: int, new_email: str):
-        if not re.fullmatch(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", new_email):
+        if not EMAIL_REGEX.fullmatch(new_email):
             raise EmailError("invalid_email_format")
         if new_email in contact.emails:
             raise EmailError("duplicate_email")
-        if not 0 <= email_index < len(contact.emails):
+        if not 0 <= email_index -1 < len(contact.emails):
             raise IndexError("invalid_email_index")
-        contact.emails[email_index] = new_email
+        contact.emails[email_index -1] = new_email
 
     # Remove contact email by index (0-based)
     def remove_email(self, contact: Contact, email_index: int):
-       if not 0 <= email_index < len(contact.emails):
+       if not 0 <= email_index -1 < len(contact.emails):
            raise IndexError("invalid_email_index")
-       contact.emails.pop(email_index)
+       contact.emails.pop(email_index -1)
 
 
     # ================ Birthday methods ================
