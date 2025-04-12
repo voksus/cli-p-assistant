@@ -267,42 +267,37 @@ class Notebook:
     # ================ Note search methods ================
     # Find note by partial data: title or content
     def find_notes(self, part: str) -> list[Note]:
-        # TODO: Implement search logic across title and content with ignore case
         result : list[Note] = []
-        part_lower = part.lower()
+        part = part.lower()
         for note in self.notes:
-            if part_lower in note.title.lower() or part_lower in note.content.lower():
+            if part in note.title.lower() or part in note.content.lower():
                 result.append(note)
         return result
 
     # Find note by title (partial or full)
     def find_note_by_title(self, title_part: str) -> list[Note]:
-        # TODO: Implement search logic by title with ignore case
         result : list[Note] = []
-        title_part_lower = title_part.lower()
+        title_part = title_part.lower()
         for note in self.notes:
-            if title_part_lower in note.title.lower():
+            if title_part in note.title.lower():
                 result.append(note)
         return result
 
     # Find note by content (partial or full)
     def find_note_by_content(self, content_part: str) -> list[Note]:
-        # TODO: Implement search logic by content with ignore case
         result : list[Note] = []
-        content_part_lower = content_part.lower()
+        content_part = content_part.lower()
         for note in self.notes:
-            if content_part_lower in note.content.lower():
+            if content_part in note.content.lower():
                 result.append(note)
         return result
 
     # Find note by tag (exact match, case-insensitive)
     def find_note_by_tag(self, tag: str) -> list[Note]:
-        # Search should be case-insensitive as tags are stored  with ignore case
-        # TODO: Implement search logic by tag
         result : list[Note] = []
-        tag_lower = tag.lower()
+        tag = tag.lower()
         for note in self.notes:
-            if tag_lower in [t.lower() for t in note.tags]:
+            if any(tag in t for t in note.tags):
                 result.append(note)
         return result
 
