@@ -370,4 +370,5 @@ def save_data_to_file(address_book: AdressBook, notebook: Notebook, file_path: s
         pass
 
 if __name__ == "__main__":
+    import main
     main()
