@@ -7,6 +7,8 @@ from datetime import date
 import re
 
 FILE_PATH = "data.pkl"  # Path to the data file
+NAME_REGEX = re.compile(r"^[a-zA-Zа-яА-ЯіІїЇєЄґҐʼ'-]+( [a-zA-Zа-яА-ЯіІїЇєЄґҐʼ'-]+)*$")
+EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
 
 # ================ Custom Exceptions ================
 class ContactError(Exception):
@@ -42,7 +44,8 @@ class Contact:
     id_counter = 0 # Consider loading/saving this counter as well
 
     def __init__(self, name: str):
-        # TODO: Add validation for name format here or ensure it's done before creating Contact
+        if not NAME_REGEX.match(name):
+            raise ContactError("invalid_name_format")
         self.__id     : int = Contact.id_counter
         self.name     : str = name
         self.phones   : list[str] = []
@@ -70,16 +73,15 @@ class AdressBook:
     # ================ Contact CRUD methods ================
     # Add contact to address book
     def add_contact(self, contact: Contact):
-        # TODO: Check for duplicate contacts
+        if any(c.name.lower() == contact.name.lower() for c in self.contacts):
+            raise ContactError("duplicate_contact")
         self.contacts.append(contact)
 
     # Remove contact by the contact object itself (found previously)
     def remove_contact(self, contact: Contact):
-        # TODO: Handle case where contact is not in list? (Shouldn't happen if logic is correct)
-        try:
-            self.contacts.remove(contact)
-        except ValueError:
+        if contact not in self.contacts:
             raise NotFoundError("contact_not_found_in_list")
+        self.contacts.remove(contact)
 
     # ================ Find methods ================
     # Find contact by partial data: name, phone or email
@@ -132,61 +134,61 @@ class AdressBook:
     # ================ Phone methods ================
     # Add contact phone number
     def add_phone(self, contact: Contact, phone_number: str):
-        # TODO: Validate phone number format (e.g., 10 digits) using re
-        # TODO: Check if phone number already exists for this contact
-        # ...
+        if not re.fullmatch(r"\d{10}", phone_number):
+            raise PhoneError("invalid_phone_format")
+        if phone_number in contact.phones:
+            raise PhoneError("duplicate_phone")
         contact.phones.append(phone_number)
 
     # Change contact phone number by index (0-based)
     def change_phone(self, contact: Contact, phone_index: int, new_phone_number: str):
-        # TODO: Validate new_phone_number format
-        # TODO: Check if new_phone_number already exists (optional, based on requirements)
-        # TODO: Validate index bounds
-        # ...
-        contact.phones[phone_index] = new_phone_number
+        if not re.fullmatch(r"\d{10}", new_phone_number):
+            raise PhoneError("invalid_phone_format")
+        if new_phone_number in contact.phones:
+            raise PhoneError("duplicate_phone")
+        if not 0 <= phone_index -1 < len(contact.phones):
+            raise IndexError("invalid_phone_index")
+        contact.phones[phone_index - 1] = new_phone_number
 
     # Remove contact phone number by index (0-based)
     def remove_phone(self, contact: Contact, phone_index: int):
-        # TODO: Validate index bounds
-        # ...
-        try:
-            contact.phones.pop(phone_index)
-        except IndexError:
+        if not 0 <= phone_index -1 < len(contact.phones):
             raise IndexError("invalid_phone_index")
+        contact.phones.pop(phone_index - 1)
 
 
     # ================ Email methods ================
     # Add contact email
     def add_email(self, contact: Contact, email: str):
-        # TODO: Validate email format (simple regex)
-        # TODO: Check if email already exists for this contact
-        # ...
+        if not EMAIL_REGEX.fullmatch(email):
+            raise EmailError("invalid_email_format")
+        if email in contact.emails:
+            raise EmailError("duplicate_email")
         contact.emails.append(email)
 
     # Change contact email by index (0-based)
     def change_email(self, contact: Contact, email_index: int, new_email: str):
-        # TODO: Validate new_email format
-        # TODO: Check if new_email already exists (optional)
-        # TODO: Validate index bounds
-        # ...
-        contact.emails[email_index] = new_email
+        if not EMAIL_REGEX.fullmatch(new_email):
+            raise EmailError("invalid_email_format")
+        if new_email in contact.emails:
+            raise EmailError("duplicate_email")
+        if not 0 <= email_index -1 < len(contact.emails):
+            raise IndexError("invalid_email_index")
+        contact.emails[email_index -1] = new_email
 
     # Remove contact email by index (0-based)
     def remove_email(self, contact: Contact, email_index: int):
-        # TODO: Validate index bounds
-        # ...
-        try:
-            contact.emails.pop(email_index)
-        except IndexError:
-            raise IndexError("invalid_email_index")
+       if not 0 <= email_index -1 < len(contact.emails):
+           raise IndexError("invalid_email_index")
+       contact.emails.pop(email_index -1)
 
 
     # ================ Birthday methods ================
     # Change contact birthday (pass None to remove)
     def change_birthday(self, contact: Contact, new_birthday: date | None):
-        # Input validation (format DD.MM.YYYY, valid date, range) should happen in the Controller before converting.
-        # TODO: Potentially add checks here if date object could be invalid (e.g., range check bethween 1900 and today)
-        # ...
+        if new_birthday is not None:
+            if new_birthday.year < 1900 or new_birthday > date.today():
+                raise BirthdayError("invalid_birthday_range") 
         contact.birthday = new_birthday
 
 
