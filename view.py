@@ -31,6 +31,7 @@ MESSAGES: dict[str, str] = {
     # --- Input Prompts (using .format(path=path_info)) ---
     "input_prompt_default": "{path} / {prompt}: ",
     "input_path_separator": " > ",
+"com_prompt_main_remove": "What do you want to delete? Enter 'contact' for a contact or 'note' for a note: ",
 
    # --- Success Messages ---
 "contact_added"          : f"{GREEN}✅ Contact added successfully!{RESET}",
@@ -59,6 +60,7 @@ MESSAGES: dict[str, str] = {
 "generic_error"          : f"{RED}❌ An error occurred. Please try again.{RESET}",
 "invalid_choice"         : f"{RED}❌ Invalid choice. Please try again.{RESET}",
 "invalid_yes_no"         : f"{RED}❌ Please enter 'yes' or 'no'.{RESET}",
+"no_entries_found"       : f"{YELLOW}📭 No entries to display.{RESET}",
 
 }
 
@@ -112,7 +114,7 @@ def display_notes(notes: list[Note]):
         return
     for index, note in enumerate(notes, start=1):
         # Probably use note.__repr__() for now, replace with proper formatting
-        print(f"{BOLD}{index}.{RESET} {note!r}")
+        print(f"{BOLD}{index}.{RESET} Name: {contact.name}, Phone: {contact.phone}, Email: {contact.email}")
 
 
 def display_birthdays(birthday_results: list[tuple[date | None]]):
@@ -133,6 +135,11 @@ def display_help():
     """Displays available commands and their descriptions."""
     # TODO: Implement formatting for help message
     print(f"{BLUE}Available Commands:{RESET}")
+    print(f"{CYAN}1. add: Add a new contact or note{RESET}")
+    print(f"{CYAN}2. remove: Remove a contact or note{RESET}")
+    print(f"{CYAN}3. list: List all contacts or notes{RESET}")
+    print(f"{CYAN}4. help: Show available commands{RESET}")
+    print(f"{CYAN}5. exit: Exit the application{RESET}")
     # ...
     pass
 
@@ -158,7 +165,7 @@ def get_confirmation(prompt_key: str, **prompt_kwargs) -> bool:
         elif answer == MESSAGES["no"]:
             return False
         else:
-            display_error("invalid_command") # Or a specific "invalid_yes_no" message
+            display_error("invalid_yes_no")  # Show error message for invalid response
 
 
 
