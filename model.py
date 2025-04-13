@@ -3,7 +3,7 @@
 # It contains the data and the logic of the app
 
 import pickle
-from datetime import date
+from datetime import date,timedelta
 import re
 
 FILE_PATH = "data.pkl"  # Path to the data file
@@ -112,6 +112,7 @@ class AdressBook:
      return self._search_contacts(email_part, lambda c: [e.lower() for e in c.emails])
 
     # Get contacts with birthdays in the next N days
+  
     def get_birthdays_in_next_days(self, days: int) -> list[tuple[Contact, date | None]]:
         """
         Finds contacts whose birthdays fall within the next 'days' days.
@@ -119,14 +120,29 @@ class AdressBook:
         Returns a list of tuples: (Contact, celebration_date | None).
         None for celebration_date means celebrate on the actual birthday.
         """
-        # TODO: Implement birthday calculation logic
-        #       - Get today's date
-        #       - Iterate through contacts with birthdays
-        #       - Check if birthday falls within the range (today + 1 day) to (today + days)
-        #       - Handle year wrap-around
-        #       - Calculate celebration date (check weekday, adjust if Sat/Sun)
+        today = date.today()
         result: list[tuple[Contact, date | None]] = []
-        # ...
+
+        for contact in self.contacts:
+         if contact.birthday is None:
+            continue  
+        
+        birthday_this_year = contact.birthday.replace(year=today.year)
+        
+        if birthday_this_year < today:
+            birthday_this_year = birthday_this_year.replace(year=today.year + 1)
+        
+        days_until_birthday = (birthday_this_year - today).days
+        
+        if 0 < days_until_birthday <= days:
+            celebration_date = None  
+
+            if birthday_this_year.weekday() == 5:  # Saturday
+                celebration_date = birthday_this_year + timedelta(days=2)  
+            elif birthday_this_year.weekday() == 6:  # Sunday
+                celebration_date = birthday_this_year + timedelta(days=1) 
+
+            result.append((contact, celebration_date))
         return result
 
 
