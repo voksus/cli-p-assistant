@@ -12,6 +12,7 @@ address_book: m.AdressBook = None
 notebook: m.Notebook = None
 current_path: list[str] = [] # Tracks the user's location in the menu e.g., ["add", "contact"]
 is_running: bool = False
+operation_cache: dict = {} # For storing temporary data between steps
 
 def initialize():
     """Loads data and sets initial state."""
@@ -36,9 +37,8 @@ def parse_input(user_input: str) -> tuple[str, list[str]]:
 
 def quit_application():
     """Saves data and sets the flag to stop the main loop."""
-    global is_running, address_book, notebook # Allow modification and access
-    # TODO: Save data before exiting
-    # ...
+    global is_running # Allow modification and access
+    v.display_success("goodbye")
     is_running = False
 
 # ================ Handler Stubs ================
@@ -47,7 +47,12 @@ def quit_application():
 # and with the Model to perform operations and handle data.
 def handle_menu_back():
     """Handles the 'menu' command to go up one level."""
-    pass
+    global current_path, operation_cache
+    if current_path:
+        current_path.pop()
+        operation_cache = {} # Clear the cache
+    else:
+        v.display_warning("already_at_main_menu") # Add message key
 
 def handle_add_base(args: list[str]):
     global current_path # Allow modification
@@ -109,8 +114,46 @@ def handle_birthdays(args: list[str]):
 
 def handle_help():
     global current_path # Allow access
-    # TODO: Define the structure for commands based on current_path
-    # ...
+    commands = {} # Create the dictionary
+    state = tuple(current_path) # Make sure there is tuple conversion for comparison
+
+    # Help messages depend on the program state
+    if not state:
+         commands = { # Main help commands
+              "add": "Add a new contact or note",
+              "change": "Modify an existing contact or note",
+              "remove": "Delete a contact or note",
+              "find": "Search contacts or notes",
+              "birthdays": "Show upcoming birthdays",
+              "help": "Show this help message",
+              "exit/quit/q": "Save data and exit"
+         }
+    elif state == ("add",): commands = {"contact": "Add a contact", "note": "Add a note", "menu": "Back"}
+    elif state == ("change",): commands = {"contact": "Change a contact", "note": "Change a note", "menu": "Back"}
+    elif state == ("remove",): commands = {"contact": "Remove a contact", "note": "Remove a note", "menu": "Back"}
+    elif state == ("find",): commands = {"contact": "Find contacts", "note": "Find notes", "menu": "Back"}
+    elif len(state) >= 2 and state[0] == "change" and state[1] not in ("note", "contact"): # changing a contact - all options
+        commands = {
+            "add phone <phone>": "Add a phone (10 digits)",
+            "change phone <index> <new_phone>": "Change a phone",
+            "remove phone <index>": "Remove a phone",
+            "add email <email>": "Add an email",
+            "change email <index> <new_email>": "Change an email",
+            "remove email <index>": "Remove an email",
+            "birthday <dd.mm.yyyy>": "Set/change birthday (empty to remove)",
+            "name <new_name>": "Change contact name",
+            "menu": "Finish changing this contact"
+        }
+    elif len(state) >= 3 and state[0] == "change" and state[1] == "note": # changing a note - all options
+        commands = {
+            "title <new_title>": "Change note title (4-128 chars)",
+            "content <text>": "Replace note content", # Separate task implements multiline
+            "add tag <tag>": "Add a tag (letters, numbers, _, 2-16 chars)",
+            "remove tag <tag>": "Remove a tag",
+            "menu": "Finish changing this note"
+        }
+    # There would be code for removing too.
+
     v.display_help()
 
 # ================ Helper/Validation Functions ================
@@ -121,50 +164,111 @@ def validate_and_parse_birthday(date_str: str) -> date | None:
 
 def run():
     """Main application loop."""
-    global is_running, current_path
+    global is_running, current_path, operation_cache
 
     initialize() # Load data and set initial state
 
     while is_running:
         path_str = get_path_string()
-        # TODO: Determine the correct prompt key based on the current state/path
         current_prompt_key = "command_prompt" # Default prompt
 
+        # --- Determine prompt based on state ---
+        state = tuple(current_path)
+        if state == ("add",): current_prompt_key = "prompt_add_type"
+        elif state == ("add", "contact"): current_prompt_key = "prompt_enter_name"
+        elif state == ("add", "note"): current_prompt_key = "prompt_enter_title"
+        elif state == ("change",): current_prompt_key = "prompt_change_type"
+        elif state == ("change", "contact") and "contact_to_change" in operation_cache: current_prompt_key = "prompt_select_index_to_change"
+        elif state == ("change", "note") and "note_to_change" in operation_cache: current_prompt_key = "prompt_select_index_to_change"
+        elif len(state) >= 2 and state[0] == "change" and state[1] != "note" and state[1] != "contact": current_prompt_key = "prompt_what_to_change_contact"
+        elif len(state) >= 3 and state[0] == "change" and state[1] == "note": current_prompt_key = "prompt_what_to_change_note"
+        elif state == ("remove",): current_prompt_key = "prompt_remove_type"
+        elif state == ("remove", "contact") and "contact_to_remove" in operation_cache: current_prompt_key = "prompt_select_index_to_remove"
+        elif state == ("remove", "note") and "note_to_remove" in operation_cache: current_prompt_key = "prompt_select_index_to_remove"
+        elif state == ("find",): current_prompt_key = "prompt_find_type"
+        elif state == ("find", "contact"): current_prompt_key = "prompt_enter_search_term"
+        elif state == ("find", "note"): current_prompt_key = "prompt_enter_search_term"
+        elif state == ("birthdays",): current_prompt_key = "prompt_enter_days"
+        # More specific prompts need coordination with handlers
+
         user_input = v.get_input(current_prompt_key, path_info=path_str)
-        command, args = parse_input(user_input)
+        command, args = parse_input(user_input) # Assumes parse_input() is defined elsewhere
 
-        # TODO: Implement command handling based on current_path and command
-        # This will involve a large dispatch mechanism (if/elif or dict mapping)
-        # that calls appropriate handler methods.
+        # --- Universal command handling ---
+        if command == "menu":
+            handle_menu_back()
+            continue
+        if command in ["exit", "quit", "q"]:
+            quit_application()
+            continue # is_running will be False
 
-        # Basic command handling (Top Level)
-        if not current_path: # If at the root menu
-            if command == "add":
-                handle_add_base(args)
-            elif command == "change":
-                handle_change_base(args)
-            elif command == "remove":
-                handle_remove_base(args)
-            elif command == "find":
-                    handle_find_base(args)
-            elif command == "birthdays":
-                handle_birthdays(args)
-            elif command == "help":
-                handle_help()
-            elif command in ["exit", "quit", "q"]:
-                quit_application()
-            elif command == "": # Empty input
-                pass # Just show prompt again
+        # --- State-based command/input handling ---
+        try:
+            state = tuple(current_path)
+
+            # Top Level
+            if not state:
+                if command == "add": handle_add_base(args)
+                elif command == "change": handle_change_base(args)
+                elif command == "remove": handle_remove_base(args)
+                elif command == "find": handle_find_base(args)
+                elif command == "birthdays": handle_birthdays(args)
+                elif command == "help": handle_help()
+                elif command == "": pass
+                else: v.display_error("invalid_command")
+            # Input handling for specific states (examples)
+            elif state == ("add",):
+                if command == "contact": handle_add_contact()
+                elif command == "note": handle_add_note()
+                else: v.display_error("invalid_type")
+            elif state == ("find",): # Expecting "contact" or "note"
+                if command == "contact": current_path.append("contact")
+                elif command == "note": current_path.append("note")
+                else: v.display_error("invalid_type")
+            elif state == ("find", "contact"): # Expecting search term
+                 term = user_input
+                 results = address_book.find_contacts(term)
+                 v.display_info("contacts_found_title", count=len(results))
+                 v.display_contacts(results)
+                 handle_menu_back() # Go back after showing results
+            elif state == ("find", "note"): # Expecting search term
+                 term = user_input
+                 results = notebook.find_notes(term)
+                 v.display_info("notes_found_title", count=len(results))
+                 v.display_notes(results)
+                 handle_menu_back()
+            elif state == ("birthdays",): # Expecting number of days
+                 days_str = user_input
+                 try:
+                     days = int(days_str)
+                     # Validation of days range (1-365) is done here as it's controller logic.
+                     if not (0 < days <= 365):
+                         raise ValueError("invalid_days_range") # Add message key
+                     results = address_book.get_birthdays_in_next_days(days)
+                     v.display_birthdays(results)
+                 except ValueError as e:
+                     # If a conversion to int fails or days are out of range
+                     v.display_error(str(e)) # Pass message key from exception
+                 handle_menu_back()
+            # --- Other states ---
+            # Logic for the other states should be implemented in their handlers or needs a more complex dispatch here.
             else:
-                v.display_error("invalid_command")
-        else:
-            # TODO: Handle commands within sub-menus (e.g., 'name', 'phone', 'tag', 'menu' commands)
-            if command == "menu":
-                    handle_menu_back()
-            else:
-                # Placeholder for sub-command handling
-                pass # Sub-menu logic not implemented
-                handle_menu_back() # Go back for now
+                 # If the command wasn't recognized for the current state (and it's not 'menu'/'exit')
+                 if command:  # If the user typed something that looked like a command
+                     v.display_error("invalid_command_for_state") # Add message key
+
+        # Catch errors from Model or Controller
+        except (m.ContactError, m.PhoneError, m.EmailError, m.BirthdayError,
+                m.TitleError, m.TagError, m.NotFoundError, m.NoteError, IndexError) as e:
+            message_key = str(e)
+            v.display_error(message_key)
+        except ValueError as e:
+             # Catch errors that are related to Controller for example days parsing in birthdays
+             message_key = str(e)
+             v.display_error(message_key)
+
+        except Exception as e: # Unexpected errors
+             v.display_error("generic_error", error_message=str(e)) # Pass the error message
 
 
 if __name__ == "__main__":
