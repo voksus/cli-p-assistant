@@ -95,10 +95,71 @@ def handle_change_note(note: m.Note):
     pass
 
 def handle_remove_base(args: list[str]):
-    global current_path, address_book, notebook # Allow access/modification
-    # TODO: Ask "contact" or "note"? Find item, display list, get index, confirm.
-    # ...
-    pass
+    global current_path, address_book, notebook
+
+    # Ask user for deletion choice (contact or note)
+    choice = v.get_input("com_prompt_main_remove").lower()
+
+    if choice == 'contact':
+        if not address_book:  # Check if there are contacts
+            v.display_error("not_found")
+            return
+
+        v.display_contacts(address_book)
+
+        try:
+            # Ask user to select a contact by number
+            contact_index = v.get_input_int("com_prompt_contact_index") - 1
+        except ValueError:
+            v.display_error("invalid_number")
+            return
+
+        # Validate contact index
+        if contact_index < 0 or contact_index >= len(address_book):
+            v.display_error("invalid_contact_id")
+            return
+
+        # Get the contact to delete
+        contact = list(address_book.values())[contact_index]
+
+        # Confirm deletion
+        if v.get_confirmation("confirm_prompt", info=v.get_short_contact_info(contact)):
+            address_book.remove(contact)
+            v.display_success("contact_deleted", name=contact.name)
+        else:
+            v.display_info("deletion_cancelled")
+
+    elif choice == 'note':
+        if not notebook:  # Check if there are notes
+            v.display_error("no_notes_found")
+            return
+
+        v.display_notes(notebook)
+
+        try:
+            # Ask user to select a note by number
+            note_index = v.get_input_int("com_prompt_note_index") - 1
+        except ValueError:
+            v.display_error("invalid_number")
+            return
+
+        # Validate note index
+        if note_index < 0 or note_index >= len(notebook):
+            v.display_error("invalid_note_id")
+            return
+
+        # Get the note to delete
+        note = notebook[note_index]
+
+        # Confirm deletion
+        if v.get_confirmation("confirm_prompt", info=v.get_short_note_info(note)):
+            notebook.remove(note)
+            v.display_success("note_deleted", title=note.title)
+        else:
+            v.display_info("deletion_cancelled")
+
+    else:
+        v.display_error("invalid_command")
 
 def handle_find_base(args: list[str]):
     global current_path, address_book, notebook # Allow access
