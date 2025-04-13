@@ -146,13 +146,12 @@ def get_confirmation(prompt_key: str, **prompt_kwargs) -> bool:
     #Gets a 'yes' or 'no' confirmation from the user.
     while True:
         answer = get_input(prompt_key, "", **prompt_kwargs).lower()
-        if answer == MESSAGES.get("yes", "yes").lower():
+        if answer == MESSAGES["yes"]:
             return True
-        elif answer == MESSAGES.get("no", "no").lower():
+        elif answer == MESSAGES["no"]:
             return False
         else:
-            display_warning("invalid_yes_no", expected_yes=MESSAGES.get("yes", "yes"), expected_no=MESSAGES.get("no", "no")) # The key "invalid_yes_no" is required.
-
+            display_warning("invalid_yes_no", expected_yes=MESSAGES["yes"], expected_no=MESSAGES["no"]) # The key "invalid_yes_no" is required.
 
 
 if __name__ == "__main__":
