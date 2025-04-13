@@ -31,34 +31,36 @@ MESSAGES: dict[str, str] = {
     # --- Input Prompts (using .format(path=path_info)) ---
     "input_prompt_default": "{path} / {prompt}: ",
     "input_path_separator": " > ",
+    "com_prompt_main_remove": "What do you want to delete? Enter 'contact' for a contact or 'note' for a note: ",
 
    # --- Success Messages ---
-"contact_added"          : f"{GREEN}✅ Contact added successfully!{RESET}",
-"note_saved"             : f"{GREEN}📝 Note saved successfully!{RESET}",
-"contact_deleted"        : f"{GREEN}🗑️ Contact deleted.{RESET}",
-"note_deleted"           : f"{GREEN}🗑️ Note deleted.{RESET}",
-"data_updated"           : f"{GREEN}✅ Data updated successfully.{RESET}",
+    "contact_added"          : f"{GREEN}✅ Contact added successfully!{RESET}",
+    "note_saved"             : f"{GREEN}📝 Note saved successfully!{RESET}",
+    "contact_deleted"        : f"{GREEN}🗑️ Contact {name} deleted.{RESET}",
+    "note_deleted"           : f"{GREEN}🗑️ Note '{title}' deleted.{RESET}",
+    "data_updated"           : f"{GREEN}✅ Data updated successfully.{RESET}",
 
-# --- Info/Title Messages ---
-"no_notes_found"         : f"{YELLOW}📭 No notes to display.{RESET}",
-"no_upcoming_birthdays"  : f"{YELLOW}🎂 No upcoming birthdays.{RESET}",
-"birthdays_found_title"  : f"{BLUE}🎉 Upcoming Birthdays:{RESET}",
-"contacts_list_title"    : f"{BLUE}📇 Contact List:{RESET}",
-"notes_list_title"       : f"{BLUE}📒 Notes List:{RESET}",
-"help_intro"             : f"{BLUE}🔧 Available commands:{RESET}",
+    # --- Info/Title Messages ---
+    "no_notes_found"         : f"{YELLOW}📭 No notes to display.{RESET}",
+    "no_upcoming_birthdays"  : f"{YELLOW}🎂 No upcoming birthdays.{RESET}",
+    "birthdays_found_title"  : f"{BLUE}🎉 Upcoming Birthdays:{RESET}",
+    "contacts_list_title"    : f"{BLUE}📇 Contact List:{RESET}",
+    "notes_list_title"       : f"{BLUE}📒 Notes List:{RESET}",
+    "help_intro"             : f"{BLUE}🔧 Available commands:{RESET}",
 
-# --- Warning Messages ---
-"field_required"         : f"{YELLOW}⚠️ This field is required!{RESET}",
-"confirm_deletion"       : f"{YELLOW}⚠️ Are you sure you want to delete this entry?{RESET}",
-"duplicate_entry"        : f"{YELLOW}⚠️ This entry already exists.{RESET}",
+    # --- Warning Messages ---
+    "field_required"         : f"{YELLOW}⚠️ This field is required!{RESET}",
+    "confirm_deletion"       : f"{YELLOW}⚠️ Are you sure you want to delete this entry?{RESET}",
+    "duplicate_entry"        : f"{YELLOW}⚠️ This entry already exists.{RESET}",
 
-# --- Error Messages ---
-"not_found"              : f"{RED}❌ Entry not found.{RESET}",
-"empty_input"            : f"{RED}❌ Empty input provided.{RESET}",
-"invalid_date"           : f"{RED}❌ Invalid date format. Use DD.MM.YYYY.{RESET}",
-"generic_error"          : f"{RED}❌ An error occurred. Please try again.{RESET}",
-"invalid_choice"         : f"{RED}❌ Invalid choice. Please try again.{RESET}",
-"invalid_yes_no"         : f"{RED}❌ Please enter 'yes' or 'no'.{RESET}",
+    # --- Error Messages ---
+    "not_found"              : f"{RED}❌ Entry not found.{RESET}",
+    "empty_input"            : f"{RED}❌ Empty input provided.{RESET}",
+    "invalid_date"           : f"{RED}❌ Invalid date format. Use DD.MM.YYYY.{RESET}",
+    "generic_error"          : f"{RED}❌ An error occurred. Please try again.{RESET}",
+    "invalid_choice"         : f"{RED}❌ Invalid choice. Please try again.{RESET}",
+    "invalid_yes_no"         : f"{RED}❌ Please enter 'yes' or 'no'.{RESET}",
+    "no_entries_found"       : f"{YELLOW}📭 No entries to display.{RESET}",
 
 }
 
@@ -93,8 +95,13 @@ def display_info(message_key: str, **kwargs):
 
 def display_contacts(contacts: list[Contact]):
     """Displays a list of contacts with 1-based indexing."""
-    # TODO: Implement detailed contact formatting with colors, fields, and 1-based indices.
-    #    ...
+    if not contacts:
+        display_info("no_entries_found")  # In case the contact list is empty
+        return
+    display_info("contacts_list_title")
+    for index, contact in enumerate(contacts, start=1):
+        # Display formatted contact information here
+        print(f"{BOLD}{index}.{RESET} Name: {contact.name}, Phone: {contact.phone}, Email: {contact.email}")
 
 
 def display_notes(notes: list[Note]):
@@ -112,7 +119,7 @@ def display_notes(notes: list[Note]):
         return
     for index, note in enumerate(notes, start=1):
         # Probably use note.__repr__() for now, replace with proper formatting
-        print(f"{BOLD}{index}.{RESET} {note!r}")
+        print(f"{BOLD}{index}.{RESET} Title: {note.title}, Content: {note.content[:50]}...")  # Showing part of content
 
 
 def display_birthdays(birthday_results: list[tuple[date | None]]):
@@ -133,6 +140,11 @@ def display_help():
     """Displays available commands and their descriptions."""
     # TODO: Implement formatting for help message
     print(f"{BLUE}Available Commands:{RESET}")
+    print(f"{CYAN}1. add: Add a new contact or note{RESET}")
+    print(f"{CYAN}2. remove: Remove a contact or note{RESET}")
+    print(f"{CYAN}3. list: List all contacts or notes{RESET}")
+    print(f"{CYAN}4. help: Show available commands{RESET}")
+    print(f"{CYAN}5. exit: Exit the application{RESET}")
     # ...
     pass
 
@@ -158,7 +170,7 @@ def get_confirmation(prompt_key: str, **prompt_kwargs) -> bool:
         elif answer == MESSAGES["no"]:
             return False
         else:
-            display_error("invalid_command") # Or a specific "invalid_yes_no" message
+            display_error("invalid_yes_no") # Show error message for invalid response
 
 
 

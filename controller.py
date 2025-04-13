@@ -91,64 +91,71 @@ def handle_change_note(note: m.Note):
 
 def handle_remove_base(args: list[str]):
     global current_path, address_book, notebook # Allow access/modification
-    # Питання: що видалити, контакт чи нотатку
-    choice = input("Що хочете видалити? Введіть 'contact' для контакту або 'note' для нотатки: ").lower()
+    # Ask user for deletion choice (contact or note)
+    choice = v.get_input("com_prompt_main_remove").lower()
 
     if choice == 'contact':
-        if not address_book:  # Перевірка на наявність контактів
-            display_error("not_found")
+        if not address_book:  # Check if there are contacts
+            v.display_error("not_found")
             return
 
-        # Виведення контактів
-        display_contacts(address_book)
+        # Output contacts
+        v.display_contacts(address_book)
 
-        # Запит на вибір контакту для видалення
-        contact_index = int(input("Введіть номер контакту для видалення: ")) - 1
-
-        # Перевірка правильності індексу
-        if contact_index < 0 or contact_index >= len(address_book):
-            display_error("invalid_contact_id")
+        # Request to select a contact to delete
+        try:
+            # Ask user to select a contact by number
+            contact_index = v.get_input_int("com_prompt_contact_index") - 1
+        except ValueError:
+            v.display_error("invalid_number")
             return
 
-        contact = address_book[contact_index]
+            # Validate contact index
+            if contact_index < 0 or contact_index >= len(address_book):
+                v.display_error("invalid_contact_id")
+                return
 
-        # Підтвердження видалення
-        if get_confirmation("confirm_prompt", path_info=f"Контакт: {contact.name}"):
-            # Видалення контакту
-            address_book.remove(contact)
-            display_success("contact_deleted", contact_name=contact.name)
-        else:
-            display_info("deletion_cancelled")
+            # Get the contact to delete
+            contact = list(address_book.values())[contact_index]
 
-    elif choice == 'note':
-        if not notebook:  # Перевірка на наявність нотаток
-            display_error("no_notes_found")
+            # Confirm deletion
+            if v.get_confirmation("confirm_prompt", info=v.get_short_contact_info(contact)):
+                address_book.remove(contact)
+                v.display_success("contact_deleted", name=contact.name)
+            else:
+                v.display_info("deletion_cancelled")
+
+        elif choice == 'note':
+        if not notebook:  # Check if there are notes
+            v.display_error("no_notes_found")
             return
 
-        # Виведення нотаток
-        display_notes(notebook)
+        v.display_notes(notebook)
 
-        # Запит на вибір нотатки для видалення
-        note_index = int(input("Введіть номер нотатки для видалення: ")) - 1
+        try:
+            # Ask user to select a note by number
+            note_index = v.get_input_int("com_prompt_note_index") - 1
+        except ValueError:
+            v.display_error("invalid_number")
+            return
 
-        # Перевірка правильності індексу
+            # Validate note index
         if note_index < 0 or note_index >= len(notebook):
-            display_error("invalid_note_id")
+            v.display_error("invalid_note_id")
             return
 
+            # Get the note to delete
         note = notebook[note_index]
 
-        # Підтвердження видалення
-        if get_confirmation("confirm_prompt", path_info=f"Нотатка: {note.title}"):
-            # Видалення нотатки
+        # Confirm deletion
+        if v.get_confirmation("confirm_prompt", info=v.get_short_note_info(note)):
             notebook.remove(note)
-            display_success("note_deleted", note_title=note.title)
+            v.display_success("note_deleted", title=note.title)
         else:
-            display_info("deletion_cancelled")
+            v.display_info("deletion_cancelled")
 
     else:
-        display_error("invalid_command")
-    pass
+        v.display_error("invalid_command")
 
 def handle_find_base(args: list[str]):
     global current_path, address_book, notebook # Allow access
