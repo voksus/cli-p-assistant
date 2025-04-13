@@ -307,36 +307,55 @@ class Notebook:
 # ================ Data Persistence ================
 # Load data from file and return AdressBook and Notebook objects
 def load_data_from_file(file_path: str = FILE_PATH) -> tuple[AdressBook, Notebook]:
+    """
+    Loads the address book, notebook, and ID counters from the file.
+    Returns new empty books if the file is not found or corrupted.
+    """
     try:
         with open(file_path, "rb") as f:
-            # TODO: Consider adding versioning or more robust error handling for pickle
-            address_book, notebook = pickle.load(f)
-            # TODO: Potentially load and restore id_counters for Contact and Note here
-            # ...
-        return address_book, notebook
+            # Attempt to load the data structure
+            data = pickle.load(f)
+            # Check if the loaded data is the expected tuple format
+            if isinstance(data, tuple) and len(data) == 4:
+                address_book, notebook, contact_counter, note_counter = data
+                # Basic type check for loaded objects
+                if isinstance(address_book, AdressBook) and isinstance(notebook, Notebook) \
+                   and isinstance(contact_counter, int) and isinstance(note_counter, int):
+                    # Restore ID counters
+                    Contact.id_counter = contact_counter
+                    Note.id_counter = note_counter
+                    return address_book, notebook
+                else:
+                    # Data has incorrect types within the tuple, treat as corrupted
+                    # New data will be created
+                    return AdressBook(), Notebook()
+            else:
+                # Data is not the expected 4-element tuple, treat as corrupted
+                # New data will be created
+                return AdressBook(), Notebook()
+
     except FileNotFoundError:
+        # It's okay if the file doesn't exist, start fresh
         return AdressBook(), Notebook()
-    except (pickle.UnpicklingError, EOFError, ImportError, IndexError, AttributeError) as e:
-        # Handle corrupted or incompatible pickle file
-        # TODO: Log the error e for debugging
-        # ...
-        return AdressBook(), Notebook()
-    except Exception as e:
-        # TODO: Log the error e for debugging
+    except (pickle.UnpicklingError, EOFError, AttributeError, ImportError, IndexError, TypeError, IOError, Exception) as e:
+        # Handle file corruption, I/O errors, or unexpected issues during loading
+        # Log the error 'e' here if logging is implemented
+        # Return empty books to allow the application to continue
         return AdressBook(), Notebook()
 
 # Save AdressBook and Notebook objects to file
 def save_data_to_file(address_book: AdressBook, notebook: Notebook, file_path: str = FILE_PATH):
-    try:
-        with open(file_path, "wb") as f:
-            # TODO: Potentially save id_counters here as well
-            pickle.dump((address_book, notebook), f)
-            print(f"Data saved to {file_path}")
-    except (pickle.PicklingError, IOError) as e:
-        # Handle errors during saving
-        pass
-    except Exception as e:
-        pass
+    """
+    Saves the address book, notebook, and current ID counters to the file.
+    Standard exceptions (IOError, pickle.PicklingError, etc.) will propagate
+    upwards if saving fails, to be handled by the caller (Controller).
+    """
+    # No try...except block here in the model for saving errors.
+    # Let exceptions propagate to the controller which handles the auto-save call.
+    with open(file_path, "wb") as f:
+        # Prepare data tuple including current ID counters
+        data_to_save: tuple = (address_book, notebook, Contact.id_counter, Note.id_counter)
+        pickle.dump(data_to_save, f)
 
 
 if __name__ == "__main__":
