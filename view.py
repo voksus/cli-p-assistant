@@ -59,6 +59,8 @@ MESSAGES: dict[str, str] = {
 "generic_error"          : f"{RED}❌ An error occurred. Please try again.{RESET}",
 "invalid_choice"         : f"{RED}❌ Invalid choice. Please try again.{RESET}",
 "invalid_yes_no"         : f"{RED}❌ Please enter 'yes' or 'no'.{RESET}",
+"eof_exit_warning": f"{RED}👋 Exit signal received. Exiting program.{RESET}",
+"keyboard_interrupt_warning": f"{RED}⛔ Program interrupted by user. Exiting...{RESET}",
 
 }
 
@@ -95,6 +97,17 @@ def display_contacts(contacts: list[Contact]):
     """Displays a list of contacts with 1-based indexing."""
     # TODO: Implement detailed contact formatting with colors, fields, and 1-based indices.
     #    ...
+    for idx, contact in enumerate(contacts, start=1):
+        print(f"{BOLD}{CYAN}{idx}. {contact.name}{RESET}")
+        for phone in contact.phones:
+            print(f"   📞 Phone: {phone}")
+        if contact.email:
+            print(f"   📧 Email: {contact.email}")
+        if contact.birthday:
+            print(f"   🎂 Birthday: {contact.birthday.strftime('%d.%m.%Y')}")
+        if contact.address:
+            print(f"   🏠 Address: {contact.address}")
+        print("-" * 40)
 
 
 def display_notes(notes: list[Note]):
@@ -113,6 +126,10 @@ def display_notes(notes: list[Note]):
     for index, note in enumerate(notes, start=1):
         # Probably use note.__repr__() for now, replace with proper formatting
         print(f"{BOLD}{index}.{RESET} {note!r}")
+        if note.tags:
+            print(f"   🏷️ Tags: {' '.join(f'#{tag}' for tag in note.tags)}")
+        print(f"   📄 Content: {note.content}")
+        print("-" * 40)
 
 
 def display_birthdays(birthday_results: list[tuple[date | None]]):
@@ -127,6 +144,10 @@ def display_birthdays(birthday_results: list[tuple[date | None]]):
         return
     display_info("birthdays_found_title")
     # TODO: Implement the actual display logic
+    for name, birth_date, celebration_date in birthday_results:
+        orig = birth_date.strftime("%d.%m")
+        celebr = celebration_date.strftime("%A %d.%m")
+        print(f"🎂 {name}: {orig} (Celebration: {celebr})")
 
 
 def display_help():
