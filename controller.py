@@ -55,24 +55,60 @@ def handle_menu_back():
         v.display_warning("already_at_main_menu") # Add message key
 
 def handle_add_base(args: list[str]):
-    global current_path # Allow modification
-    # TODO: Ask user "contact" or "note"?
-    # ...
-    pass
+    global current_path
+
+    # If the user provides arguments, try to interpret the first as the item type
+    if args:
+        choice = args[0].lower()
+        if choice in ["contact", "note"]:
+            current_path.append("add")
+            current_path.append(choice)  # For example: ["add", "contact"]
+        else:
+            v.display_error("invalid_type")  # Invalid item type
+    else:
+        # No arguments, just enter the 'add' menu and wait for next input
+        current_path.append("add")
 
 def handle_add_contact():
-    global current_path, address_book # Allow access/modification
-    current_path.append("contact") # Now path is ["add", "contact"]
-    # TODO:
-    # ...
-    pass
+    global current_path, address_book, operation_cache
+    current_path.append("contact")
+
+    name = v.get_input("prompt_enter_name")
+    if address_book.get_contact(name):
+        v.display_error("contact_exists")
+        handle_menu_back()
+        return
+
+    phones = v.get_input("prompt_enter_phones").split()  # Список номеров
+    emails = v.get_input("prompt_enter_emails").split()  # Список email
+    bday_str = v.get_input("prompt_enter_birthday")  # Может быть пустой
+
+    try:
+        birthday = validate_and_parse_birthday(bday_str) if bday_str else None
+        contact = m.Contact(name=name, phones=phones, emails=emails, birthday=birthday)
+        address_book.add_contact(contact)
+        v.display_success("contact_added", name=name)
+    except Exception as e:
+        v.display_error(str(e))
+    finally:
+        handle_menu_back()
 
 def handle_add_note():
-    global current_path, notebook # Allow access/modification
-    current_path.append("note") # Path ["add", "note"]
-    # TODO: Ask for title, validate, create Note, add to notebook, handle errors, display result
-    # ...
-    pass
+    global current_path, notebook
+    current_path.append("note")  # Path becomes ["add", "note"]
+
+    # Ask the user for the note title
+    title = v.get_input("prompt_enter_title")
+
+    # Validate and create note
+    try:
+        note = m.Note(title=title)  # Assuming content and tags can be added later
+        notebook.add_note(note)
+        v.display_success("note_added", title=title)
+    except (m.TitleError, m.NoteError) as e:
+        v.display_error(str(e))
+    finally:
+        handle_menu_back()  # Go back to the previous menu
 
 def handle_change_base(args: list[str]):
     global current_path, address_book, notebook
@@ -276,16 +312,23 @@ def handle_remove_base(args: list[str]):
         v.display_error("invalid_command")
 
 def handle_find_base(args: list[str]):
-    global current_path, address_book, notebook # Allow access
-    # TODO: Ask "contact" or "note"? Ask search term.
-    # ...
-    pass
+    global current_path
+
+    # If the user provides arguments, determine whether it's contact or note search
+    if args:
+        choice = args[0].lower()
+        if choice in ["contact", "note"]:
+            current_path.append("find")
+            current_path.append(choice)  # For example: ["find", "contact"]
+        else:
+            v.display_error("invalid_type")
+    else:
+        # No arguments provided, go to the 'find' menu to ask what to search
+        current_path.append("find")
 
 def handle_birthdays(args: list[str]):
-    global address_book # Allow access
-    # TODO: Ask for number of days (n)
-    # ...
-    pass
+    global current_path # Allow access
+    current_path.append("birthdays")
 
 def handle_help():
     global current_path # Allow access
@@ -335,7 +378,10 @@ def handle_help():
 
 def validate_and_parse_birthday(date_str: str) -> date | None:
     """ Tries to parse DD.MM.YYYY and validates the date. Returns date or raises BirthdayError."""
-    # TODO: Implement birthday parsing and validation logic
+    try:
+        return datetime.strptime(date_str, "%d.%m.%Y").date()
+    except ValueError:
+        raise m.BirthdayError("invalid_birthday_format")
 
 def run():
     """Main application loop."""
