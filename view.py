@@ -31,7 +31,6 @@ MESSAGES: dict[str, str] = {
     # --- Input Prompts (using .format(path=path_info)) ---
     "input_prompt_default": "{path} / {prompt}: ",
     "input_path_separator": " > ",
-"com_prompt_main_remove": "What do you want to delete? Enter 'contact' for a contact or 'note' for a note: ",
 
    # --- Success Messages ---
 "contact_added"          : f"{GREEN}✅ Contact added successfully!{RESET}",
@@ -60,7 +59,8 @@ MESSAGES: dict[str, str] = {
 "generic_error"          : f"{RED}❌ An error occurred. Please try again.{RESET}",
 "invalid_choice"         : f"{RED}❌ Invalid choice. Please try again.{RESET}",
 "invalid_yes_no"         : f"{RED}❌ Please enter 'yes' or 'no'.{RESET}",
-"no_entries_found"       : f"{YELLOW}📭 No entries to display.{RESET}",
+"eof_exit_warning": f"{RED}👋 Exit signal received. Exiting program.{RESET}",
+"keyboard_interrupt_warning": f"{RED}⛔ Program interrupted by user. Exiting...{RESET}",
 
 }
 
@@ -97,6 +97,17 @@ def display_contacts(contacts: list[Contact]):
     """Displays a list of contacts with 1-based indexing."""
     # TODO: Implement detailed contact formatting with colors, fields, and 1-based indices.
     #    ...
+    for idx, contact in enumerate(contacts, start=1):
+        print(f"{BOLD}{CYAN}{idx}. {contact.name}{RESET}")
+        for phone in contact.phones:
+            print(f"   📞 Phone: {phone}")
+        if contact.email:
+            print(f"   📧 Email: {contact.email}")
+        if contact.birthday:
+            print(f"   🎂 Birthday: {contact.birthday.strftime('%d.%m.%Y')}")
+        if contact.address:
+            print(f"   🏠 Address: {contact.address}")
+        print("-" * 40)
 
 
 def display_notes(notes: list[Note]):
@@ -114,7 +125,11 @@ def display_notes(notes: list[Note]):
         return
     for index, note in enumerate(notes, start=1):
         # Probably use note.__repr__() for now, replace with proper formatting
-        print(f"{BOLD}{index}.{RESET} Name: {contact.name}, Phone: {contact.phone}, Email: {contact.email}")
+        print(f"{BOLD}{index}.{RESET} {note!r}")
+        if note.tags:
+            print(f"   🏷️ Tags: {' '.join(f'#{tag}' for tag in note.tags)}")
+        print(f"   📄 Content: {note.content}")
+        print("-" * 40)
 
 
 def display_birthdays(birthday_results: list[tuple[date | None]]):
@@ -129,17 +144,16 @@ def display_birthdays(birthday_results: list[tuple[date | None]]):
         return
     display_info("birthdays_found_title")
     # TODO: Implement the actual display logic
+    for name, birth_date, celebration_date in birthday_results:
+        orig = birth_date.strftime("%d.%m")
+        celebr = celebration_date.strftime("%A %d.%m")
+        print(f"🎂 {name}: {orig} (Celebration: {celebr})")
 
 
 def display_help():
     """Displays available commands and their descriptions."""
     # TODO: Implement formatting for help message
     print(f"{BLUE}Available Commands:{RESET}")
-    print(f"{CYAN}1. add: Add a new contact or note{RESET}")
-    print(f"{CYAN}2. remove: Remove a contact or note{RESET}")
-    print(f"{CYAN}3. list: List all contacts or notes{RESET}")
-    print(f"{CYAN}4. help: Show available commands{RESET}")
-    print(f"{CYAN}5. exit: Exit the application{RESET}")
     # ...
     pass
 
@@ -165,7 +179,7 @@ def get_confirmation(prompt_key: str, **prompt_kwargs) -> bool:
         elif answer == MESSAGES["no"]:
             return False
         else:
-            display_error("invalid_yes_no")  # Show error message for invalid response
+            display_error("invalid_command") # Or a specific "invalid_yes_no" message
 
 
 
