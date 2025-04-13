@@ -139,18 +139,11 @@ def display_help():
 # ================ Input Functions ================
 
 def get_input(prompt_key: str, path_info: str = "", **prompt_kwargs) -> str:
-    """Gets user input with a formatted prompt including the menu path."""
-    # Construct the prompt with path
-    path_display = path_info + MESSAGES["input_path_separator"] if path_info else ""
-    prompt_text = _get_message(prompt_key, **prompt_kwargs)
-    full_prompt = MESSAGES["input_prompt_default"].format(path=path_display, prompt=prompt_text)
-
-    user_input = input(full_prompt)
-    return user_input.strip()
-
+        user_input = input(path_info)
+        return user_input.strip()
+    
 def get_confirmation(prompt_key: str, **prompt_kwargs) -> bool:
-    """Gets a 'yes' or 'no' confirmation from the user."""
-    # TODO: Add loop for invalid input if needed
+    #Gets a 'yes' or 'no' confirmation from the user.
     while True:
         answer = get_input(prompt_key, "", **prompt_kwargs).lower()
         if answer == MESSAGES["yes"]:
@@ -158,8 +151,7 @@ def get_confirmation(prompt_key: str, **prompt_kwargs) -> bool:
         elif answer == MESSAGES["no"]:
             return False
         else:
-            display_error("invalid_command") # Or a specific "invalid_yes_no" message
-
+            display_warning("invalid_yes_no", expected_yes=MESSAGES["yes"], expected_no=MESSAGES["no"]) # The key "invalid_yes_no" is required.
 
 
 if __name__ == "__main__":
