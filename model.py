@@ -92,11 +92,8 @@ class AdressBook:
         *[phone.lower() for phone in contact.phones],
         *[email.lower() for email in contact.emails]
     ]
-    def _search_contacts(self, part: str, field_getter: callable) -> list[Contact]:
-     part = part.lower().strip()
-     if not part:
-        return []
 
+    def _search_contacts(self, part: str, field_getter: callable) -> list[Contact]:
      return [
         contact for contact in self.contacts
         if any(part in field for field in field_getter(contact))
@@ -109,7 +106,7 @@ class AdressBook:
      return self._search_contacts(name_part, lambda c: [c.name.lower()])
 
     def find_contact_by_phone(self, phone_part: str) -> list[Contact]:
-     return self._search_contacts(phone_part, lambda c: [p.lower() for p in c.phones])
+     return self._search_contacts(phone_part, lambda c: [p for p in c.phones])
 
     def find_contact_by_email(self, email_part: str) -> list[Contact]:
      return self._search_contacts(email_part, lambda c: [e.lower() for e in c.emails])
