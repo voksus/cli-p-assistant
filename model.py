@@ -124,25 +124,25 @@ class AdressBook:
         result: list[tuple[Contact, date | None]] = []
 
         for contact in self.contacts:
-         if contact.birthday is None:
-            continue  
+            if contact.birthday is None:
+                continue  
         
         birthday_this_year = contact.birthday.replace(year=today.year)
         
         if birthday_this_year < today:
-            birthday_this_year = birthday_this_year.replace(year=today.year + 1)
+           birthday_this_year = birthday_this_year.replace(year=today.year + 1)
         
         days_until_birthday = (birthday_this_year - today).days
         
         if 0 < days_until_birthday <= days:
-            celebration_date = None  
+           celebration_date = None  
 
-            if birthday_this_year.weekday() == 5:  # Saturday
+           if birthday_this_year.weekday() == 5:  # Saturday
                 celebration_date = birthday_this_year + timedelta(days=2)  
-            elif birthday_this_year.weekday() == 6:  # Sunday
+           elif birthday_this_year.weekday() == 6:  # Sunday
                 celebration_date = birthday_this_year + timedelta(days=1) 
 
-            result.append((contact, celebration_date))
+           result.append((contact, celebration_date))
         return result
 
 
