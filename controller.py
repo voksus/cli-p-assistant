@@ -75,24 +75,138 @@ def handle_add_note():
     pass
 
 def handle_change_base(args: list[str]):
-    global current_path # Allow modification
-    # TODO: Ask "contact" or "note"? Find item, display list, get index.
-    # ...
-    pass
+    global current_path, address_book, notebook
+
+    choice = get_input("input_prompt_choose_change")
+
+    if choice == 'contact':
+        if not address_book:
+            display_error("no_contacts_found")
+            return
+
+        display_contacts(address_book)
+        contact_index = get_input_int("input_prompt_choose_contact") - 1
+
+        if contact_index < 0 or contact_index >= len(address_book):
+            display_error("invalid_contact_id")
+            return
+
+        handle_change_contact(address_book[contact_index])
+
+    elif choice == 'note':
+        if not notebook:
+            display_error("no_notes_found")
+            return
+
+        display_notes(notebook)
+        note_index = get_input_int("input_prompt_choose_note") - 1
+
+        if note_index < 0 or note_index >= len(notebook):
+            display_error("invalid_note_id")
+            return
+
+        handle_change_note(notebook[note_index])
+
+    else:
+        display_error("invalid_command")
 
 def handle_change_contact(contact: m.Contact):
-    global current_path, address_book, notebook # Allow access
-    # Path is ["change", contact.name]
-    # TODO: Loop asking what to change (phone, email, birthday, name?)
-    # ...
-    pass
+    global current_path, address_book, notebook
+
+    display_info("editing_contact", contact_name=contact.name)
+    is_changed = False  # Flag to track if any change occurred
+
+    while True:
+        field = get_input("input_prompt_change_field")
+
+        if field == 'name':
+            new_name = get_input("input_prompt_new_name", contact_name=contact.name)
+            contact.change_contact_name(new_name)
+            is_changed = True
+
+        elif field == 'phone':
+            index = get_input_int("input_prompt_choose_phone_index")
+            new_phone = get_input("input_prompt_new_phone")
+            contact.change_phone(index, new_phone)
+            is_changed = True
+
+        elif field == 'email':
+            index = get_input_int("input_prompt_choose_email_index")
+            new_email = get_input("input_prompt_new_email")
+            contact.change_email(index, new_email)
+            is_changed = True
+
+        elif field == 'birthday' or field == 'bd':
+            new_birthday = get_input_date("input_prompt_new_birthday")
+            contact.change_birthday(new_birthday)
+            is_changed = True
+
+        elif field == 'back':
+            break
+
+        elif field == 'exit':
+            if is_changed and get_confirmation("confirm_prompt", path_info=f"Contact: {contact.name}"):
+                display_success("contact_changed", contact_name=contact.name)
+            else:
+                display_info("change_cancelled")
+            break
+
+        else:
+            display_error("invalid_command")
 
 def handle_change_note(note: m.Note):
-    global current_path, notebook, address_book # Allow access
-    # Path is ["change", "note", note.title]
-    # TODO: Loop asking what to change (title, content, tags?)
-    # Handle sub-commands, call model, validate, handle errors, save, display results
-    pass
+    global current_path, address_book, notebook
+
+    display_info("editing_note", note_title=note.title)
+    is_changed = False
+
+    while True:
+        field = get_input("input_prompt_change_field")
+
+        if field == 'title':
+            new_title = get_input("input_prompt_new_title")
+            note.change_note_title(new_title)
+            is_changed = True
+
+        elif field == 'content':
+            new_content = get_input("input_prompt_new_content")
+            note.change_note_content(new_content)
+            is_changed = True
+
+        elif field == 'tags':
+            while True:
+                tag_action = get_input("input_prompt_tag_action", note_tags=" ".join(note.tags))
+
+                if tag_action == 'add':
+                    new_tags_input = get_input("input_prompt_add_tags")
+                    new_tags = new_tags_input.strip().split()
+                    for tag in new_tags:
+                        note.add_tag_to_note(tag)
+                    is_changed = True
+
+                elif tag_action == 'remove':
+                    tag_to_remove = get_input("input_prompt_remove_tag")
+                    note.remove_tag_from_note(tag_to_remove)
+                    is_changed = True
+
+                elif tag_action == 'back':
+                    break
+
+                else:
+                    display_error("invalid_command")
+
+        elif field == 'back':
+            break
+
+        elif field == 'exit':
+            if is_changed and get_confirmation("confirm_prompt", path_info=f"Note: {note.title}"):
+                display_success("note_changed", note_title=note.title)
+            else:
+                display_info("change_cancelled")
+            break
+
+        else:
+            display_error("invalid_command")
 
 def handle_remove_base(args: list[str]):
     global current_path, address_book, notebook
