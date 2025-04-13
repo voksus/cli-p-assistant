@@ -139,38 +139,19 @@ def display_help():
 # ================ Input Functions ================
 
 def get_input(prompt_key: str, path_info: str = "", **prompt_kwargs) -> str:
-    """Gets user input with a formatted prompt including the menu path."""
-    # Construct the prompt with path
-    path_display = path_info + MESSAGES.get("input_path_separator", " > ") if path_info else "" 
-    prompt_text = _get_message(prompt_key, **prompt_kwargs)
-    # Use the key for the main query template
-    full_prompt_template = MESSAGES.get("input_prompt_default", "{path}{prompt}")
-    full_prompt = full_prompt_template.format(path=path_display, prompt=prompt_text)
-    
-    try:
-        user_input = input(full_prompt)
+        user_input = input(path_info)
         return user_input.strip()
-    except EOFError: # Processing Ctrl+D / Ctrl+Z
-        display_warning("eof_exit_warning")
-        raise SystemExit
-    except KeyboardInterrupt:
-        display_warning("keyboard_interrupt_warning")
-        raise SystemExit
     
 def get_confirmation(prompt_key: str, **prompt_kwargs) -> bool:
-    """Gets a 'yes' or 'no' confirmation from the user."""
-    # TODO: Add loop for invalid input if needed
+    #Gets a 'yes' or 'no' confirmation from the user.
     while True:
         answer = get_input(prompt_key, "", **prompt_kwargs).lower()
-        yes_answer = MESSAGES.get("yes", "yes")
-        no_answer = MESSAGES.get("no", "no")
-        
-        if answer == yes_answer:
+        if answer == MESSAGES.get("yes", "yes").lower():
             return True
-        elif answer == no_answer:
+        elif answer == MESSAGES.get("no", "no").lower():
             return False
         else:
-            display_warning("invalid_yes_no", expected_yes=yes_answer, expected_no=no_answer) # The key "invalid_yes_no" is required.
+            display_warning("invalid_yes_no", expected_yes=MESSAGES.get("yes", "yes"), expected_no=MESSAGES.get("no", "no")) # The key "invalid_yes_no" is required.
 
 
 
