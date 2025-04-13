@@ -86,32 +86,30 @@ class AdressBook:
 
     # ================ Find methods ================
     # Find contact by partial data: name, phone or email
+    def _contact_search_fields(self, contact: Contact) -> list[str]:
+     return [
+        contact.name.lower(),
+        *[phone.lower() for phone in contact.phones],
+        *[email.lower() for email in contact.emails]
+    ]
+
+    def _search_contacts(self, part: str, field_getter: callable) -> list[Contact]:
+     return [
+        contact for contact in self.contacts
+        if any(part in field for field in field_getter(contact))
+    ]
+
     def find_contacts(self, part: str) -> list[Contact]:
-        # TODO: Implement search logic across name, phones, and emails (case-insensitive?)
-        result : list[Contact] = []
-        # ...
-        return result
+     return self._search_contacts(part, self._contact_search_fields)
 
-    # Find contact by name (partial or full)
     def find_contact_by_name(self, name_part: str) -> list[Contact]:
-        # TODO: Implement search logic by name (case-insensitive?)
-        result : list[Contact] = []
-        # ...
-        return result
+     return self._search_contacts(name_part, lambda c: [c.name.lower()])
 
-    # Find contact by phone (partial or full)
     def find_contact_by_phone(self, phone_part: str) -> list[Contact]:
-        # TODO: Implement search logic by phone
-        result : list[Contact] = []
-        # ...
-        return result
+     return self._search_contacts(phone_part, lambda c: [p for p in c.phones])
 
-    # Find contact by email (partial or full)
     def find_contact_by_email(self, email_part: str) -> list[Contact]:
-        # TODO: Implement search logic by email (case-insensitive?)
-        result : list[Contact] = []
-        # ...
-        return result
+     return self._search_contacts(email_part, lambda c: [e.lower() for e in c.emails])
 
     # Get contacts with birthdays in the next N days
     def get_birthdays_in_next_days(self, days: int) -> list[tuple[Contact, date | None]]:
