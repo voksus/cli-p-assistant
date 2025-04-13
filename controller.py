@@ -12,7 +12,6 @@ address_book: m.AdressBook = None
 notebook: m.Notebook = None
 current_path: list[str] = [] # Tracks the user's location in the menu e.g., ["add", "contact"]
 is_running: bool = False
-operation_cache: dict = {} # For storing temporary data between steps
 
 def initialize():
     """Loads data and sets initial state."""
@@ -37,8 +36,8 @@ def parse_input(user_input: str) -> tuple[str, list[str]]:
 
 def quit_application():
     """Saves data and sets the flag to stop the main loop."""
-    global is_running # Allow modification and access
-    v.display_success("goodbye")
+    global is_running, address_book, notebook # Allow modification and access
+    m.save_data_to_file(address_book, notebook)
     is_running = False
 
 # ================ Handler Stubs ================
@@ -47,219 +46,338 @@ def quit_application():
 # and with the Model to perform operations and handle data.
 def handle_menu_back():
     """Handles the 'menu' command to go up one level."""
-    global current_path, operation_cache
+    global current_path
     if current_path:
         current_path.pop()
-        operation_cache = {} # Clear the cache
-    else:
-        v.display_warning("already_at_main_menu") # Add message key
+    pass
 
 def handle_add_base(args: list[str]):
-    global current_path # Allow modification
-    # TODO: Ask user "contact" or "note"?
-    # ...
+    """Handles the 'add' command to add a contact or note."""
+    global current_path
+    if len(args) == 0:
+        choice = v.get_input("What would you like to add? (contact/note): ").strip().lower()
+        if choice == "contact":
+            handle_add_contact()
+        elif choice == "note":
+            handle_add_note()
+        else:
+            v.display_error("Invalid choice. Please select 'contact' or 'note'.")
+    else:
+        v.display_error("Too many arguments. Use 'add' to begin adding.")
     pass
 
 def handle_add_contact():
-    global current_path, address_book # Allow access/modification
-    current_path.append("contact") # Now path is ["add", "contact"]
-    # TODO:
-    # ...
+    """Handles the addition of a new contact."""
+    global current_path, address_book
+    current_path.append("contact")
+
+    name = v.get_input("Enter contact name: ")
+    phone = v.get_input("Enter contact phone: ")
+    email = v.get_input("Enter contact email: ")
+
+    # Add contact to address book
+    new_contact = m.Contact(name, phone, email)
+    address_book.add_contact(new_contact)
+
+    v.display_success(f"Contact '{name}' added successfully.")
+    current_path.pop()  # Go back to the previous level in menu
     pass
 
 def handle_add_note():
-    global current_path, notebook # Allow access/modification
-    current_path.append("note") # Path ["add", "note"]
-    # TODO: Ask for title, validate, create Note, add to notebook, handle errors, display result
-    # ...
+    """Handles the addition of a new note."""
+    global current_path, notebook
+    current_path.append("note")
+
+    title = v.get_input("Enter note title: ")
+    content = v.get_input("Enter note content: ")
+    tags = v.get_input("Enter tags (comma-separated): ").split(',')
+
+    new_note = m.Note(title, content, tags)
+    notebook.add_note(new_note)
+
+    v.display_success(f"Note '{title}' added successfully.")
+    current_path.pop()
     pass
 
 def handle_change_base(args: list[str]):
-    global current_path, address_book, notebook # Allow modification
-    # Запит на вибір між контактами або нотатками
-    choice = input("Що хочете змінити? Введіть 'contact' для контакту або 'note' для нотатки: ").lower()
-
-    if choice == 'contact':
-        if not address_book:  # Перевірка на наявність контактів
-            display_error("no_contacts_found")
-            return
-
-        # Виведення списку контактів
-        display_contacts(address_book)
-
-        # Запит на вибір контакту для зміни
-        contact_index = int(input("Введіть номер контакту для зміни: ")) - 1
-
-        # Перевірка правильності індексу
-        if contact_index < 0 or contact_index >= len(address_book):
-            display_error("invalid_contact_id")
-            return
-
-        contact = address_book[contact_index]
-
-        # Виклик функції для зміни контакту
-        handle_change_contact(contact)
-
-    elif choice == 'note':
-        if not notebook:  # Перевірка на наявність нотаток
-            display_error("no_notes_found")
-            return
-
-        # Виведення списку нотаток
-        display_notes(notebook)
-
-        # Запит на вибір нотатки для зміни
-        note_index = int(input("Введіть номер нотатки для зміни: ")) - 1
-
-        # Перевірка правильності індексу
-        if note_index < 0 or note_index >= len(notebook):
-            display_error("invalid_note_id")
-            return
-
-        note = notebook[note_index]
-
-        # Виклик функції для зміни нотатки
-        handle_change_note(note)
-
+    global current_path # Allow modification
+    # TODO: Ask "contact" or "note"? Find item, display list, get index.
+    """Handles the 'change' command to modify a contact or note."""
+    if len(args) == 0:
+        choice = v.get_input("What would you like to change? (contact/note): ").strip().lower()
+        if choice == "contact":
+            handle_change_contact_base()
+        elif choice == "note":
+            handle_change_note_base()
+        else:
+            v.display_error("Invalid choice. Please select 'contact' or 'note'.")
     else:
-        display_error("invalid_command")
-    pass
+        v.display_error("Too many arguments. Use 'change' to begin changing.")
+
+def handle_change_contact_base():
+    """Handles the 'change contact' command to modify a specific contact."""
+    global current_path, address_book
+    current_path.append("contact")
+
+    # Display list of contacts
+    contacts = address_book.get_all_contacts()
+    if not contacts:
+        v.display_error("No contacts available to modify.")
+        current_path.pop()  # Go back
+        return
+
+    # Show list and ask user to select
+    v.display_success("Available contacts to change:")
+    for idx, contact in enumerate(contacts, start=1):
+        v.display_info(f"{idx}. {contact.name} - {contact.phone} - {contact.email}")
+
+    choice = v.get_input("Enter the number of the contact to modify: ")
+    try:
+        index = int(choice) - 1
+        if 0 <= index < len(contacts):
+            handle_change_contact(contacts[index])
+        else:
+            v.display_error("Invalid contact number.")
+    except ValueError:
+        v.display_error("Invalid input. Please enter a valid number.")
+
+    current_path.pop()  # Go back
 
 def handle_change_contact(contact: m.Contact):
-    global current_path, address_book, notebook # Allow access
-    # Виведення поточних даних контакту
-    display_info("editing_contact", contact_name=contact.name)
+    """Handles the modification of a single contact's details."""
+    global current_path, address_book
+    current_path.append(contact.name)
 
-    # Цикл для зміни полів
-    while True:
-        print(f"Поточні дані: {contact}")
-        field = input("Що хочете змінити? (name, phone, email, birthday або 'exit' для виходу): ").lower()
+    # Ask what to change
+    field_to_change = v.get_input("What would you like to change? (name/phone/email): ").strip().lower()
 
-        if field == 'name':
-            new_name = input(f"Введіть нове ім'я (поточне: {contact.name}): ")
-            contact.name = new_name
+    if field_to_change == "name":
+        new_name = v.get_input("Enter new name: ")
+        contact.name = new_name
+        v.display_success(f"Contact name changed to {new_name}")
+    elif field_to_change == "phone":
+        new_phone = v.get_input("Enter new phone number: ")
+        contact.phone = new_phone
+        v.display_success(f"Contact phone changed to {new_phone}")
+    elif field_to_change == "email":
+        new_email = v.get_input("Enter new email: ")
+        contact.email = new_email
+        v.display_success(f"Contact email changed to {new_email}")
+    else:
+        v.display_error("Invalid field. Please select 'name', 'phone', or 'email'.")
 
-        elif field == 'phone':
-            new_phone = input(f"Введіть новий номер телефону (поточний: {contact.phone}): ")
-            contact.phone = new_phone
+    address_book.save_to_file()  # Save the updated data
+    current_path.pop()  # Go back
 
-        elif field == 'email':
-            new_email = input(f"Введіть новий email (поточний: {contact.email}): ")
-            contact.email = new_email
 
-        elif field == 'birthday':
-            new_birthday = input(f"Введіть нову дату народження (поточна: {contact.birthday}): ")
-            contact.birthday = new_birthday
+def handle_change_note_base():
+    """Handles the 'change note' command to modify a specific note."""
+    global current_path, notebook
+    current_path.append("note")
 
-        elif field == 'exit':
-            # Підтвердження зміни
-            if get_confirmation("confirm_prompt", path_info=f"Контакт: {contact.name}"):
-                display_success("contact_changed", contact_name=contact.name)
-                break
-            else:
-                display_info("change_cancelled")
-                break
+    # Display list of notes
+    notes = notebook.get_all_notes()
+    if not notes:
+        v.display_error("No notes available to modify.")
+        current_path.pop()  # Go back
+        return
 
+    # Show list and ask user to select
+    v.display_success("Available notes to change:")
+    for idx, note in enumerate(notes, start=1):
+        v.display_info(f"{idx}. {note.title} | Tags: {note.tags}")
+
+    choice = v.get_input("Enter the number of the note to modify: ")
+    try:
+        index = int(choice) - 1
+        if 0 <= index < len(notes):
+            handle_change_note(notes[index])
         else:
-            display_error("invalid_command")
-    pass
+            v.display_error("Invalid note number.")
+    except ValueError:
+        v.display_error("Invalid input. Please enter a valid number.")
+
+    current_path.pop()  # Go back
+
 
 def handle_change_note(note: m.Note):
-    global current_path, notebook, address_book # Allow access
-    # Виведення поточних даних нотатки
-    display_info("editing_note", note_title=note.title)
+    """Handles the modification of a single note's details."""
+    global current_path, notebook
+    current_path.append(note.title)
 
-    # Цикл для зміни полів
-    while True:
-        print(f"Поточні дані: {note}")
-        field = input("Що хочете змінити? (title, content, tags або 'exit' для виходу): ").lower()
+    # Ask what to change
+    field_to_change = v.get_input("What would you like to change? (title/content/tags): ").strip().lower()
 
-        if field == 'title':
-            new_title = input(f"Введіть новий заголовок (поточний: {note.title}): ")
-            note.title = new_title
+    if field_to_change == "title":
+        new_title = v.get_input("Enter new title: ")
+        note.title = new_title
+        v.display_success(f"Note title changed to {new_title}")
+    elif field_to_change == "content":
+        new_content = v.get_input("Enter new content: ")
+        note.content = new_content
+        v.display_success(f"Note content changed.")
+    elif field_to_change == "tags":
+        new_tags = v.get_input("Enter new tags (comma-separated): ").split(',')
+        note.tags = new_tags
+        v.display_success(f"Note tags updated.")
+    else:
+        v.display_error("Invalid field. Please select 'title', 'content', or 'tags'.")
 
-        elif field == 'content':
-            new_content = input(f"Введіть новий вміст нотатки (поточний: {note.content}): ")
-            note.content = new_content
-
-        elif field == 'tags':
-            new_tags = input(f"Введіть нові теги (поточні: {', '.join(note.tags)}): ")
-            note.tags = new_tags.split(", ")
-
-        elif field == 'exit':
-            # Підтвердження зміни
-            if get_confirmation("confirm_prompt", path_info=f"Нотатка: {note.title}"):
-                display_success("note_changed", note_title=note.title)
-                break
-            else:
-                display_info("change_cancelled")
-                break
-
-        else:
-            display_error("invalid_command")
+    notebook.save_to_file()  # Save the updated data
+    current_path.pop()  # Go back
     pass
 
 def handle_remove_base(args: list[str]):
-    global current_path, address_book, notebook # Allow access/modification
-    # TODO: Ask "contact" or "note"? Find item, display list, get index, confirm.
-    # ...
-    pass
+    """Handles the 'remove' command to delete a contact or note."""
+    global current_path
+    if len(args) == 0:
+        choice = v.get_input("What would you like to remove? (contact/note): ").strip().lower()
+        if choice == "contact":
+            handle_remove_contact_base()
+        elif choice == "note":
+            handle_remove_note_base()
+        else:
+            v.display_error("Invalid choice. Please select 'contact' or 'note'.")
+    else:
+        v.display_error("Too many arguments. Use 'remove' to begin removing.")
+
+def handle_remove_contact_base():
+    """Handles the 'remove contact' command to delete a specific contact."""
+    global current_path, address_book
+    current_path.append("contact")
+
+    # Display list of contacts
+    contacts = address_book.get_all_contacts()
+    if not contacts:
+        v.display_error("No contacts available to remove.")
+        current_path.pop()  # Go back
+        return
+
+    # Show list and ask user to select
+    v.display_success("Available contacts to remove:")
+    for idx, contact in enumerate(contacts, start=1):
+        v.display_info(f"{idx}. {contact.name} - {contact.phone} - {contact.email}")
+
+    choice = v.get_input("Enter the number of the contact to remove: ")
+    try:
+        index = int(choice) - 1
+        if 0 <= index < len(contacts):
+            confirm = v.get_input(f"Are you sure you want to remove {contacts[index].name}? (yes/no): ").strip().lower()
+            if confirm == "yes":
+                address_book.remove_contact(contacts[index])
+                address_book.save_to_file()  # Save after removing
+                v.display_success(f"Contact {contacts[index].name} removed.")
+            else:
+                v.display_info("Removal cancelled.")
+        else:
+            v.display_error("Invalid contact number.")
+    except ValueError:
+        v.display_error("Invalid input. Please enter a valid number.")
+
+    current_path.pop()  # Go back
+
+
+def handle_remove_note_base():
+    """Handles the 'remove note' command to delete a specific note."""
+    global current_path, notebook
+    current_path.append("note")
+
+    # Display list of notes
+    notes = notebook.get_all_notes()
+    if not notes:
+        v.display_error("No notes available to remove.")
+        current_path.pop()  # Go back
+        return
+
+    # Show list and ask user to select
+    v.display_success("Available notes to remove:")
+    for idx, note in enumerate(notes, start=1):
+        v.display_info(f"{idx}. {note.title} | Tags: {note.tags}")
+
+    choice = v.get_input("Enter the number of the note to remove: ")
+    try:
+        index = int(choice) - 1
+        if 0 <= index < len(notes):
+            confirm = v.get_input(
+                f"Are you sure you want to remove the note '{notes[index].title}'? (yes/no): ").strip().lower()
+            if confirm == "yes":
+                notebook.remove_note(notes[index])
+                notebook.save_to_file()  # Save after removing
+                v.display_success(f"Note '{notes[index].title}' removed.")
+            else:
+                v.display_info("Removal cancelled.")
+        else:
+            v.display_error("Invalid note number.")
+    except ValueError:
+        v.display_error("Invalid input. Please enter a valid number.")
+
+    current_path.pop()  # Go back
 
 def handle_find_base(args: list[str]):
-    global current_path, address_book, notebook # Allow access
-    # TODO: Ask "contact" or "note"? Ask search term.
-    # ...
+    """Handles the 'find' command to search for contacts or notes."""
+    global current_path, address_book, notebook
+    if len(args) == 0:
+        search_term = v.get_input("Enter search term: ").strip()
+
+        # Search in contacts
+        found_contacts = address_book.search_contacts(search_term)
+        if found_contacts:
+            v.display_success("Found contacts:")
+            for contact in found_contacts:
+                v.display_info(f"{contact.name} - {contact.phone} - {contact.email}")
+        else:
+            v.display_error("No contacts found.")
+
+        # Search in notes
+            found_notes = notebook.search_notes(search_term)
+            if found_notes:
+                v.display_success("Found notes:")
+                for note in found_notes:
+                    v.display_info(f"Title: {note.title} | Tags: {note.tags}")
+            else:
+                v.display_error("No notes found.")
+    else:
+        v.display_error("Too many arguments. Use 'find' to search.")
     pass
 
 def handle_birthdays(args: list[str]):
-    global address_book # Allow access
-    # TODO: Ask for number of days (n)
-    # ...
+    """Handles the 'birthdays' command to check upcoming birthdays."""
+    global address_book
+    if len(args) == 0:
+        days_in_advance = v.get_input("Enter number of days to check for birthdays: ").strip()
+        try:
+            days_in_advance = int(days_in_advance)
+            upcoming_birthdays = address_book.get_upcoming_birthdays(days_in_advance)
+
+            if upcoming_birthdays:
+                v.display_success(f"Upcoming birthdays in the next {days_in_advance} days:")
+                for contact in upcoming_birthdays:
+                    v.display_info(f"{contact.name} - {contact.birthday.strftime('%d.%m.%Y')}")
+            else:
+                v.display_error(f"No birthdays in the next {days_in_advance} days.")
+        except ValueError:
+            v.display_error("Invalid input. Please enter a valid number.")
+    else:
+        v.display_error("Too many arguments. Use 'birthdays' to check birthdays.")
     pass
 
 def handle_help():
-    global current_path # Allow access
-    commands = {} # Create the dictionary
-    state = tuple(current_path) # Make sure there is tuple conversion for comparison
-
-    # Help messages depend on the program state
-    if not state:
-         commands = { # Main help commands
-              "add": "Add a new contact or note",
-              "change": "Modify an existing contact or note",
-              "remove": "Delete a contact or note",
-              "find": "Search contacts or notes",
-              "birthdays": "Show upcoming birthdays",
-              "help": "Show this help message",
-              "exit/quit/q": "Save data and exit"
-         }
-    elif state == ("add",): commands = {"contact": "Add a contact", "note": "Add a note", "menu": "Back"}
-    elif state == ("change",): commands = {"contact": "Change a contact", "note": "Change a note", "menu": "Back"}
-    elif state == ("remove",): commands = {"contact": "Remove a contact", "note": "Remove a note", "menu": "Back"}
-    elif state == ("find",): commands = {"contact": "Find contacts", "note": "Find notes", "menu": "Back"}
-    elif len(state) >= 2 and state[0] == "change" and state[1] not in ("note", "contact"): # changing a contact - all options
-        commands = {
-            "add phone <phone>": "Add a phone (10 digits)",
-            "change phone <index> <new_phone>": "Change a phone",
-            "remove phone <index>": "Remove a phone",
-            "add email <email>": "Add an email",
-            "change email <index> <new_email>": "Change an email",
-            "remove email <index>": "Remove an email",
-            "birthday <dd.mm.yyyy>": "Set/change birthday (empty to remove)",
-            "name <new_name>": "Change contact name",
-            "menu": "Finish changing this contact"
-        }
-    elif len(state) >= 3 and state[0] == "change" and state[1] == "note": # changing a note - all options
-        commands = {
-            "title <new_title>": "Change note title (4-128 chars)",
-            "content <text>": "Replace note content", # Separate task implements multiline
-            "add tag <tag>": "Add a tag (letters, numbers, _, 2-16 chars)",
-            "remove tag <tag>": "Remove a tag",
-            "menu": "Finish changing this note"
-        }
-    # There would be code for removing too.
-
-    v.display_help()
+    """Displays help based on the current path."""
+    global current_path
+    if not current_path:  # Root menu
+        v.display_help("Available commands: add, change, remove, find, birthdays, help, quit")
+    elif "add" in current_path:
+        v.display_help("Use 'contact' or 'note' to specify what you want to add.")
+    elif "change" in current_path:
+        v.display_help("Use 'contact' or 'note' to change a specific item.")
+    elif "remove" in current_path:
+        v.display_help("Use 'contact' or 'note' to remove a specific item.")
+    elif "find" in current_path:
+        v.display_help("Search for contacts or notes by a keyword.")
+    elif "birthdays" in current_path:
+        v.display_help("Check upcoming birthdays for the next n days.")
+    else:
+        v.display_error("No help available for this section.")
 
 # ================ Helper/Validation Functions ================
 
@@ -269,111 +387,50 @@ def validate_and_parse_birthday(date_str: str) -> date | None:
 
 def run():
     """Main application loop."""
-    global is_running, current_path, operation_cache
+    global is_running, current_path
 
     initialize() # Load data and set initial state
 
     while is_running:
         path_str = get_path_string()
+        # TODO: Determine the correct prompt key based on the current state/path
         current_prompt_key = "command_prompt" # Default prompt
 
-        # --- Determine prompt based on state ---
-        state = tuple(current_path)
-        if state == ("add",): current_prompt_key = "prompt_add_type"
-        elif state == ("add", "contact"): current_prompt_key = "prompt_enter_name"
-        elif state == ("add", "note"): current_prompt_key = "prompt_enter_title"
-        elif state == ("change",): current_prompt_key = "prompt_change_type"
-        elif state == ("change", "contact") and "contact_to_change" in operation_cache: current_prompt_key = "prompt_select_index_to_change"
-        elif state == ("change", "note") and "note_to_change" in operation_cache: current_prompt_key = "prompt_select_index_to_change"
-        elif len(state) >= 2 and state[0] == "change" and state[1] != "note" and state[1] != "contact": current_prompt_key = "prompt_what_to_change_contact"
-        elif len(state) >= 3 and state[0] == "change" and state[1] == "note": current_prompt_key = "prompt_what_to_change_note"
-        elif state == ("remove",): current_prompt_key = "prompt_remove_type"
-        elif state == ("remove", "contact") and "contact_to_remove" in operation_cache: current_prompt_key = "prompt_select_index_to_remove"
-        elif state == ("remove", "note") and "note_to_remove" in operation_cache: current_prompt_key = "prompt_select_index_to_remove"
-        elif state == ("find",): current_prompt_key = "prompt_find_type"
-        elif state == ("find", "contact"): current_prompt_key = "prompt_enter_search_term"
-        elif state == ("find", "note"): current_prompt_key = "prompt_enter_search_term"
-        elif state == ("birthdays",): current_prompt_key = "prompt_enter_days"
-        # More specific prompts need coordination with handlers
-
         user_input = v.get_input(current_prompt_key, path_info=path_str)
-        command, args = parse_input(user_input) # Assumes parse_input() is defined elsewhere
+        command, args = parse_input(user_input)
 
-        # --- Universal command handling ---
-        if command == "menu":
-            handle_menu_back()
-            continue
-        if command in ["exit", "quit", "q"]:
-            quit_application()
-            continue # is_running will be False
+        # TODO: Implement command handling based on current_path and command
+        # This will involve a large dispatch mechanism (if/elif or dict mapping)
+        # that calls appropriate handler methods.
 
-        # --- State-based command/input handling ---
-        try:
-            state = tuple(current_path)
-
-            # Top Level
-            if not state:
-                if command == "add": handle_add_base(args)
-                elif command == "change": handle_change_base(args)
-                elif command == "remove": handle_remove_base(args)
-                elif command == "find": handle_find_base(args)
-                elif command == "birthdays": handle_birthdays(args)
-                elif command == "help": handle_help()
-                elif command == "": pass
-                else: v.display_error("invalid_command")
-            # Input handling for specific states (examples)
-            elif state == ("add",):
-                if command == "contact": handle_add_contact()
-                elif command == "note": handle_add_note()
-                else: v.display_error("invalid_type")
-            elif state == ("find",): # Expecting "contact" or "note"
-                if command == "contact": current_path.append("contact")
-                elif command == "note": current_path.append("note")
-                else: v.display_error("invalid_type")
-            elif state == ("find", "contact"): # Expecting search term
-                 term = user_input
-                 results = address_book.find_contacts(term)
-                 v.display_info("contacts_found_title", count=len(results))
-                 v.display_contacts(results)
-                 handle_menu_back() # Go back after showing results
-            elif state == ("find", "note"): # Expecting search term
-                 term = user_input
-                 results = notebook.find_notes(term)
-                 v.display_info("notes_found_title", count=len(results))
-                 v.display_notes(results)
-                 handle_menu_back()
-            elif state == ("birthdays",): # Expecting number of days
-                 days_str = user_input
-                 try:
-                     days = int(days_str)
-                     # Validation of days range (1-365) is done here as it's controller logic.
-                     if not (0 < days <= 365):
-                         raise ValueError("invalid_days_range") # Add message key
-                     results = address_book.get_birthdays_in_next_days(days)
-                     v.display_birthdays(results)
-                 except ValueError as e:
-                     # If a conversion to int fails or days are out of range
-                     v.display_error(str(e)) # Pass message key from exception
-                 handle_menu_back()
-            # --- Other states ---
-            # Logic for the other states should be implemented in their handlers or needs a more complex dispatch here.
+        # Basic command handling (Top Level)
+        if not current_path: # If at the root menu
+            if command == "add":
+                handle_add_base(args)
+            elif command == "change":
+                handle_change_base(args)
+            elif command == "remove":
+                handle_remove_base(args)
+            elif command == "find":
+                    handle_find_base(args)
+            elif command == "birthdays":
+                handle_birthdays(args)
+            elif command == "help":
+                handle_help()
+            elif command in ["exit", "quit", "q"]:
+                quit_application()
+            elif command == "": # Empty input
+                pass # Just show prompt again
             else:
-                 # If the command wasn't recognized for the current state (and it's not 'menu'/'exit')
-                 if command:  # If the user typed something that looked like a command
-                     v.display_error("invalid_command_for_state") # Add message key
-
-        # Catch errors from Model or Controller
-        except (m.ContactError, m.PhoneError, m.EmailError, m.BirthdayError,
-                m.TitleError, m.TagError, m.NotFoundError, m.NoteError, IndexError) as e:
-            message_key = str(e)
-            v.display_error(message_key)
-        except ValueError as e:
-             # Catch errors that are related to Controller for example days parsing in birthdays
-             message_key = str(e)
-             v.display_error(message_key)
-
-        except Exception as e: # Unexpected errors
-             v.display_error("generic_error", error_message=str(e)) # Pass the error message
+                v.display_error("invalid_command")
+        else:
+            # TODO: Handle commands within sub-menus (e.g., 'name', 'phone', 'tag', 'menu' commands)
+            if command == "menu":
+                    handle_menu_back()
+            else:
+                # Placeholder for sub-command handling
+                pass # Sub-menu logic not implemented
+                handle_menu_back() # Go back for now
 
 
 if __name__ == "__main__":
