@@ -9,6 +9,7 @@ import re
 FILE_PATH = "data.pkl"  # Path to the data file
 NAME_REGEX = re.compile(r"^[a-zA-Zа-яА-ЯіІїЇєЄґҐʼ'-]+( [a-zA-Zа-яА-ЯіІїЇєЄґҐʼ'-]+)*$")
 EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+PHONE_REGEX = re.compile(r"\d{10}")
 
 # ================ Custom Exceptions ================
 class ContactError(Exception):
@@ -133,59 +134,60 @@ class AdressBook:
 
     # ================ Phone methods ================
     # Add contact phone number
-    def add_phone(self, contact: Contact, phone_number: str):
-        if not re.fullmatch(r"\d{10}", phone_number):
+    def _validate_phone(self, contact: Contact, phone_number: str) -> None | PhoneError:
+        if not PHONE_REGEX.fullmatch(phone_number):
             raise PhoneError("invalid_phone_format")
         if phone_number in contact.phones:
             raise PhoneError("duplicate_phone")
+
+    def add_phone(self, contact: Contact, phone_number: str):
+        self._validate_phone(contact, phone_number)
         contact.phones.append(phone_number)
 
     # Change contact phone number by index (0-based)
     def change_phone(self, contact: Contact, phone_index: int, new_phone_number: str):
-        if not re.fullmatch(r"\d{10}", new_phone_number):
-            raise PhoneError("invalid_phone_format")
-        if new_phone_number in contact.phones:
-            raise PhoneError("duplicate_phone")
-        if not 0 <= phone_index -1 < len(contact.phones):
+        self._validate_phone(contact, new_phone_number)
+        if not 0 <= phone_index - 1 < len(contact.phones):
             raise IndexError("invalid_phone_index")
         contact.phones[phone_index - 1] = new_phone_number
 
     # Remove contact phone number by index (0-based)
     def remove_phone(self, contact: Contact, phone_index: int):
-        if not 0 <= phone_index -1 < len(contact.phones):
+        if not 0 <= phone_index - 1 < len(contact.phones):
             raise IndexError("invalid_phone_index")
         contact.phones.pop(phone_index - 1)
 
 
     # ================ Email methods ================
     # Add contact email
+    def _validate_email(contact: Contact, email: str) -> None | EmailError:
+     if not EMAIL_REGEX.fullmatch(email):
+        raise EmailError("invalid_email_format")
+     if email in contact.emails:
+        raise EmailError("duplicate_email")
+    
     def add_email(self, contact: Contact, email: str):
-        if not EMAIL_REGEX.fullmatch(email):
-            raise EmailError("invalid_email_format")
-        if email in contact.emails:
-            raise EmailError("duplicate_email")
+        self._validate_email(contact, email)
         contact.emails.append(email)
 
     # Change contact email by index (0-based)
     def change_email(self, contact: Contact, email_index: int, new_email: str):
-        if not EMAIL_REGEX.fullmatch(new_email):
-            raise EmailError("invalid_email_format")
-        if new_email in contact.emails:
-            raise EmailError("duplicate_email")
-        if not 0 <= email_index -1 < len(contact.emails):
+        self._validate_email(contact, new_email)
+        if not 0 <= email_index - 1 < len(contact.emails):
             raise IndexError("invalid_email_index")
-        contact.emails[email_index -1] = new_email
+        contact.emails[email_index - 1] = new_email
 
     # Remove contact email by index (0-based)
     def remove_email(self, contact: Contact, email_index: int):
-       if not 0 <= email_index -1 < len(contact.emails):
+       if not 0 <= email_index - 1 < len(contact.emails):
            raise IndexError("invalid_email_index")
-       contact.emails.pop(email_index -1)
+       contact.emails.pop(email_index - 1)
 
 
     # ================ Birthday methods ================
     # Change contact birthday (pass None to remove)
     def change_birthday(self, contact: Contact, new_birthday: date | None):
+        # Input validation (format DD.MM.YYYY, valid date, range) should happen in the Controller before converting.
         if new_birthday is not None:
             if new_birthday.year < 1900 or new_birthday > date.today():
                 raise BirthdayError("invalid_birthday_range") 
