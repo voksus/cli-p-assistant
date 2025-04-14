@@ -95,32 +95,36 @@ class AdressBook:
     # ================ Find methods ================
     # Find contact by partial data: name, phone or email
     def _contact_search_fields(self, contact: Contact) -> list[str]:
-     return [
-        contact.name.lower(),
-        *[phone.lower() for phone in contact.phones],
-        *[email.lower() for email in contact.emails]
+        return [
+            contact.name.lower(),
+            *[phone.lower() for phone in contact.phones],
+            *[email.lower() for email in contact.emails]
     ]
 
     def _search_contacts(self, part: str, field_getter: callable) -> list[Contact]:
-     return [
-        contact for contact in self.contacts
-        if any(part in field for field in field_getter(contact))
-    ]
+        part = part.lower() # Search case-insensitively
+        return [
+            contact for contact in self.contacts
+            if any(part in field for field in field_getter(contact))
+        ]
 
     def find_contacts(self, part: str) -> list[Contact]:
-     return self._search_contacts(part, self._contact_search_fields)
+        part = part.lower() # Search case-insensitively
+        return self._search_contacts(part, self._contact_search_fields)
 
     def find_contact_by_name(self, name_part: str) -> list[Contact]:
-     return self._search_contacts(name_part, lambda c: [c.name.lower()])
+        name_part = name_part.lower() # Search case-insensitively
+        return self._search_contacts(name_part, lambda c: [c.name.lower()])
 
     def find_contact_by_phone(self, phone_part: str) -> list[Contact]:
-     return self._search_contacts(phone_part, lambda c: [p for p in c.phones])
+        return self._search_contacts(phone_part, lambda c: [p for p in c.phones])
 
     def find_contact_by_email(self, email_part: str) -> list[Contact]:
-     return self._search_contacts(email_part, lambda c: [e.lower() for e in c.emails])
+        email_part = email_part.lower() # Search case-insensitively
+        return self._search_contacts(email_part, lambda c: [e.lower() for e in c.emails])
 
     # Get contacts with birthdays in the next N days
-  
+
     def get_birthdays_in_next_days(self, days: int) -> list[tuple[Contact, date | None]]:
         """
         Finds contacts whose birthdays fall within the next 'days' days.
@@ -133,24 +137,33 @@ class AdressBook:
 
         for contact in self.contacts:
             if contact.birthday is None:
-                continue  
-        
-        birthday_this_year = contact.birthday.replace(year=today.year)
-        
-        if birthday_this_year < today:
-           birthday_this_year = birthday_this_year.replace(year=today.year + 1)
-        
-        days_until_birthday = (birthday_this_year - today).days
-        
-        if 0 < days_until_birthday <= days:
-           celebration_date = None  
+                continue
 
-           if birthday_this_year.weekday() == 5:  # Saturday
-                celebration_date = birthday_this_year + timedelta(days=2)  
-           elif birthday_this_year.weekday() == 6:  # Sunday
-                celebration_date = birthday_this_year + timedelta(days=1) 
+            try:
+                birthday_this_year = contact.birthday.replace(year=today.year)
 
-           result.append((contact, celebration_date))
+                if birthday_this_year < today:
+                   birthday_this_year = birthday_this_year.replace(year=today.year + 1)
+
+                days_until_birthday = (birthday_this_year - today).days
+
+                # Check if birthday is within the range (0 to days inclusive)
+                # We include 0 for birthdays today
+                if 0 <= days_until_birthday <= days:
+                   celebration_date = None
+
+                   # Check weekday (Monday is 0, Sunday is 6)
+                   weekday = birthday_this_year.weekday()
+                   if weekday == 5:  # Saturday
+                        celebration_date = birthday_this_year + timedelta(days=2)
+                   elif weekday == 6:  # Sunday
+                        celebration_date = birthday_this_year + timedelta(days=1)
+
+                   result.append((contact, celebration_date))
+            except ValueError:
+                # Handle potential errors like invalid dates (e.g., Feb 29 in a non-leap year)
+                # Or log the error for the specific contact
+                continue # Skip this contact
         return result
 
 
@@ -166,53 +179,67 @@ class AdressBook:
         self._validate_phone(contact, phone_number)
         contact.phones.append(phone_number)
 
-    # Change contact phone number by index (0-based)
+    # Change contact phone number by index (1-based for user input, converted to 0-based internally)
     def change_phone(self, contact: Contact, phone_index: int, new_phone_number: str):
+        internal_index = phone_index - 1 # Convert to 0-based index
+        if not 0 <= internal_index < len(contact.phones):
+            raise IndexError("invalid_phone_index")
+        # Validate the new number *before* changing
         self._validate_phone(contact, new_phone_number)
-        if not 0 <= phone_index - 1 < len(contact.phones):
-            raise IndexError("invalid_phone_index")
-        contact.phones[phone_index - 1] = new_phone_number
+        contact.phones[internal_index] = new_phone_number
 
-    # Remove contact phone number by index (0-based)
+    # Remove contact phone number by index (1-based for user input, converted to 0-based internally)
     def remove_phone(self, contact: Contact, phone_index: int):
-        if not 0 <= phone_index - 1 < len(contact.phones):
+        internal_index = phone_index - 1 # Convert to 0-based index
+        if not 0 <= internal_index < len(contact.phones):
             raise IndexError("invalid_phone_index")
-        contact.phones.pop(phone_index - 1)
+        contact.phones.pop(internal_index)
 
 
     # ================ Email methods ================
     # Add contact email
-    def _validate_email(contact: Contact, email: str) -> None | EmailError:
-     if not EMAIL_REGEX.fullmatch(email):
-        raise EmailError("invalid_email_format")
-     if email in contact.emails:
-        raise EmailError("duplicate_email")
-    
+    def _validate_email(self, contact: Contact, email: str) -> None | EmailError:
+        # Made this an instance method by adding self
+        email_lower = email.lower() # Store and compare emails case-insensitively
+        if not EMAIL_REGEX.fullmatch(email_lower):
+            raise EmailError("invalid_email_format")
+        # Check against lowercased existing emails
+        if email_lower in [e.lower() for e in contact.emails]:
+            raise EmailError("duplicate_email")
+
     def add_email(self, contact: Contact, email: str):
         self._validate_email(contact, email)
-        contact.emails.append(email)
+        contact.emails.append(email) # Store original case, but validation is case-insensitive
 
-    # Change contact email by index (0-based)
+    # Change contact email by index (1-based for user input, converted to 0-based internally)
     def change_email(self, contact: Contact, email_index: int, new_email: str):
-        self._validate_email(contact, new_email)
-        if not 0 <= email_index - 1 < len(contact.emails):
+        internal_index = email_index - 1 # Convert to 0-based index
+        if not 0 <= internal_index < len(contact.emails):
             raise IndexError("invalid_email_index")
-        contact.emails[email_index - 1] = new_email
+        # Validate the new email *before* changing
+        self._validate_email(contact, new_email)
+        contact.emails[internal_index] = new_email
 
-    # Remove contact email by index (0-based)
+    # Remove contact email by index (1-based for user input, converted to 0-based internally)
     def remove_email(self, contact: Contact, email_index: int):
-       if not 0 <= email_index - 1 < len(contact.emails):
+       internal_index = email_index - 1 # Convert to 0-based index
+       if not 0 <= internal_index < len(contact.emails):
            raise IndexError("invalid_email_index")
-       contact.emails.pop(email_index - 1)
+       contact.emails.pop(internal_index)
 
 
     # ================ Birthday methods ================
     # Change contact birthday (pass None to remove)
     def change_birthday(self, contact: Contact, new_birthday: date | None):
-        # Input validation (format DD.MM.YYYY, valid date, range) should happen in the Controller before converting.
+        # Input validation (format DD.MM.YYYY) happens in Controller before conversion.
+        # Model validates the date object itself.
         if new_birthday is not None:
+            # Ensure it's a valid date object before range check
+            if not isinstance(new_birthday, date):
+                 # This case should ideally not happen if controller parses correctly
+                 raise BirthdayError("invalid_birthday_object") # Add message key
             if new_birthday.year < 1900 or new_birthday > date.today():
-                raise BirthdayError("invalid_birthday_range") 
+                raise BirthdayError("invalid_birthday_range")
         contact.birthday = new_birthday
 
 
@@ -223,8 +250,8 @@ class Note:
     MAX_TITLE_LEN = 128
     MIN_TAG_LEN = 2
     MAX_TAG_LEN = 16
-    TAG_PATTERN = re.compile(r"^[a-zA-Z0-9]+$") #validation for letters and numbers only.
-    
+    TAG_PATTERN = re.compile(r"^[a-zA-Z0-9_]+$") #validation for letters and numbers only.
+
     #Id_counter - IMPORTANT:
     # Its value should be set by the load_data_from_file function
     # after loading the data (e.g. max(note.id for note in notes) + 1).
@@ -232,14 +259,14 @@ class Note:
     id_counter = 0 # Consider loading/saving this counter as well
 
     def __init__(self, title: str):
-        # --- Implementing name validation ---              
+        # --- Implementing title validation ---
         if not (Note.MIN_TITLE_LEN <= len(title) <= Note.MAX_TITLE_LEN):
             # Error key with parameters
             raise TitleError("invalid_title_length", min=Note.MIN_TITLE_LEN, max=Note.MAX_TITLE_LEN)
         self.__id    : int = Note.id_counter
         self.title   : str = title
         self.content : str = ""
-        self.tags    : list[str] = []
+        self.tags    : list[str] = [] # Tags are stored in lowercase
         Note.id_counter += 1
 
     @property
@@ -265,8 +292,12 @@ class Note:
 class Notebook:
     def __init__(self, autosave_callback=None):
         self.notes : list[Note] = []
-        self.autosave_callback = autosave_callback # Save callback'у
-        
+        self.autosave_callback = autosave_callback # Save callback
+        if autosave_callback:
+             self._autosave = autosave_callback # Directly assign if provided
+        else:
+             self._autosave = lambda: None # No-op if no callback
+
     # --- Private method to call autosave ---
     def _autosave(self):
         """Calls the autosave callback if it's set."""
@@ -276,7 +307,7 @@ class Notebook:
     # ================ Note CRUD methods ================
     # Add note to notebook
     def add_note(self, note: Note):
-        # --- Implementing duplicate name checking ---
+        # --- Implementing duplicate title checking (case-insensitive) ---
         title_lower = note.title.lower()
         for existing_note in self.notes:
             if existing_note.title.lower() == title_lower:
@@ -289,7 +320,7 @@ class Notebook:
         if not (Note.MIN_TITLE_LEN <= len(new_title) <= Note.MAX_TITLE_LEN):
             raise TitleError("invalid_title_length", min=Note.MIN_TITLE_LEN, max=Note.MAX_TITLE_LEN)
 
-        # Check for duplicates (ignoring the current note)
+        # Check for duplicates (ignoring the current note, case-insensitive)
         new_title_lower = new_title.lower()
         for existing_note in self.notes:
             if existing_note.id != note.id and existing_note.title.lower() == new_title_lower:
@@ -298,6 +329,7 @@ class Notebook:
         self._autosave() # Call autosave
 
     def change_note_content(self, note: Note, new_content: str):
+        # No specific validation for content, allow anything including empty
         note.content = new_content
         self._autosave() # Call autosave
 
@@ -312,59 +344,57 @@ class Notebook:
 
 # ================ Tag methods ================
     def add_tag_to_note(self, note: Note, tag: str):
-    # --- Implementing tag validation ---
+        # --- Implementing tag validation ---
         tag_clean = tag.strip()  # Remove any leading/trailing spaces
         if not (Note.MIN_TAG_LEN <= len(tag_clean) <= Note.MAX_TAG_LEN):
-        # If the tag length is not within the defined limits, raise an error with parameters
             raise TagError("invalid_tag_length", min=Note.MIN_TAG_LEN, max=Note.MAX_TAG_LEN)
         if not Note.TAG_PATTERN.match(tag_clean):
-        # If the tag format doesn't match the defined pattern, raise an error
             raise TagError("invalid_tag_format")  # Error key
 
-        tag_lower = tag_clean.lower()  # Convert the tag to lowercase for case-insensitive comparison
+        tag_lower = tag_clean.lower()  # Convert the tag to lowercase
 
-    # --- Check for duplicate tags ---
-    # Find any existing tags in the note that match the given tag
-        tags_repeat = [existing_tag for existing_tag in note.tags if existing_tag == tag_lower]
+        # --- Check for duplicate tags ---
+        if tag_lower in note.tags:
+            # If the tag already exists, raise an error or warn (currently warns via view)
+            # For consistency, let's raise an error from the model
+            raise TagError("duplicate_tag_in_note", tag=tag_lower, title=note.title) # Add message key
 
-        if tags_repeat:
-        # If the tag already exists, don't raise an error; instead, issue a warning
-            v.display_warning("tags_already_exist", tags_repeat=tags_repeat)
-
-    # If the tag is not already in the note, add it
-        if tag_lower not in note.tags:
-            note.tags.append(tag_lower)
-            note.tags.sort()  # Sort tags alphabetically for consistency
+        # If the tag is not already in the note, add it
+        note.tags.append(tag_lower)
+        note.tags.sort()  # Sort tags alphabetically for consistency
+        self._autosave() # Call autosave
 
     def remove_tag_from_note(self, note: Note, tag: str):
-    # --- Implementing tag removal error handling ---
-        tag = tag.lower()
+        # --- Implementing tag removal error handling ---
+        tag_lower = tag.lower() # Ensure comparison is case-insensitive
         try:
              # Check if the tag exists before deleting
-             if tag not in note.tags:
+             if tag_lower not in note.tags:
                  raise ValueError # Raise an error if the tag is missing
-             note.tags.remove(tag)
+             note.tags.remove(tag_lower)
              self._autosave() # Call autosave AFTER successful deletion
         except ValueError:
             # Generate an error with the key if the tag is not in the note
-            raise NotFoundError("tag_not_found_in_note", tag, title=note.title) # Error key
+            raise NotFoundError("tag_not_found_in_note", tag=tag_lower, title=note.title) # Error key
 
     # ================ Note search methods ================
     def find_notes(self, part: str) -> list[Note]:
-        part = part.lower()
-        return [ note for note in self.notes if part in note.title.lower() or part in note.content.lower() ]
+        part_lower = part.lower() # Search case-insensitively
+        return [ note for note in self.notes if part_lower in note.title.lower() or part_lower in note.content.lower() ]
 
     def find_note_by_title(self, part: str) -> list[Note]:
-        part = part.lower()
-        return [ note for note in self.notes if part in note.title.lower() ]
+        part_lower = part.lower() # Search case-insensitively
+        return [ note for note in self.notes if part_lower in note.title.lower() ]
 
     def find_note_by_content(self, part: str) -> list[Note]:
-        part = part.lower()
-        return [ note for note in self.notes if part in note.content.lower() ]
+        part_lower = part.lower() # Search case-insensitively
+        return [ note for note in self.notes if part_lower in note.content.lower() ]
 
     def find_note_by_tag(self, part: str) -> list[Note]:
-        part = part.lower()
-        return [ note for note in self.notes if part in note.tags ]
+        """Finds notes where any tag contains the search part (case-insensitive)."""
+        part_lower = part.lower() # Search case-insensitively
+        # *** FIXED: Search for part within each tag ***
+        return [ note for note in self.notes if any(part_lower in tag for tag in note.tags) ]
 
 
 # ================ Data Persistence ================
@@ -373,54 +403,67 @@ def load_data_from_file(file_path: str = FILE_PATH) -> tuple[AdressBook, Noteboo
     """
     Loads the address book, notebook, and ID counters from the file.
     Returns new empty books if the file is not found or corrupted.
+    Also sets up the autosave callback for the loaded notebook.
     """
+    address_book = AdressBook()
+    notebook = Notebook() # Create default empty notebook first
+
     try:
         with open(file_path, "rb") as f:
-            # Attempt to load the data structure
             data = pickle.load(f)
-            # Check if the loaded data is the expected tuple format
             if isinstance(data, tuple) and len(data) == 4:
-                address_book, notebook, contact_counter, note_counter = data
-                # Basic type check for loaded objects
-                if isinstance(address_book, AdressBook) and isinstance(notebook, Notebook) \
+                loaded_ab, loaded_nb, contact_counter, note_counter = data
+                if isinstance(loaded_ab, AdressBook) and isinstance(loaded_nb, Notebook) \
                    and isinstance(contact_counter, int) and isinstance(note_counter, int):
-                    # Restore ID counters
+                    # Restore data and ID counters
+                    address_book = loaded_ab
+                    notebook = loaded_nb # Use loaded notebook
                     Contact.id_counter = contact_counter
                     Note.id_counter = note_counter
-                    return address_book, notebook
                 else:
-                    # Data has incorrect types within the tuple, treat as corrupted
-                    # New data will be created
-                    return AdressBook(), Notebook()
+                    # Data has incorrect types, use defaults but log potentially?
+                    pass # Using default empty books
             else:
-                # Data is not the expected 4-element tuple, treat as corrupted
-                # New data will be created
-                return AdressBook(), Notebook()
+                 # Data is not the expected tuple, use defaults
+                 pass # Using default empty books
 
     except FileNotFoundError:
-        # It's okay if the file doesn't exist, start fresh
-        return AdressBook(), Notebook()
+        # Start fresh, use default empty books
+        pass
     except (pickle.UnpicklingError, EOFError, AttributeError, ImportError, IndexError, TypeError, IOError, Exception) as e:
-        # Handle file corruption, I/O errors, or unexpected issues during loading
-        # Log the error 'e' here if logging is implemented
-        # Return empty books to allow the application to continue
-        return AdressBook(), Notebook()
+        # Handle various load errors, use defaults
+        # Consider logging the error 'e' here
+        print(f"[Warning] Error loading data file: {e}. Starting with empty data.") # Simple console warning
+
+    # Save AdressBook and Notebook objects to file
+    def actual_save():
+        # This function needs access to both address_book and notebook
+        # It's slightly awkward here in the model file.
+        # Ideally, the controller sets this callback after loading.
+        # For now, let's assume save_data_to_file is accessible and works.
+        try:
+            save_data_to_file(address_book, notebook, file_path)
+            # print("Autosave successful.") # Optional debug message
+        except Exception as save_error:
+            # How to handle autosave errors? Log them? Inform user?
+            print(f"[Error] Autosave failed: {save_error}") # Simple console error
+
+    notebook.autosave_callback = actual_save # Set the callback
+
+    return address_book, notebook
 
 # Save AdressBook and Notebook objects to file
 def save_data_to_file(address_book: AdressBook, notebook: Notebook, file_path: str = FILE_PATH):
     """
     Saves the address book, notebook, and current ID counters to the file.
-    Standard exceptions (IOError, pickle.PicklingError, etc.) will propagate
-    upwards if saving fails, to be handled by the caller (Controller).
+    Propagates exceptions upwards if saving fails.
     """
-    # No try...except block here in the model for saving errors.
-    # Let exceptions propagate to the controller which handles the auto-save call.
+    # No try...except here, let controller handle save errors if needed
     with open(file_path, "wb") as f:
-        # Prepare data tuple including current ID counters
         data_to_save: tuple = (address_book, notebook, Contact.id_counter, Note.id_counter)
         pickle.dump(data_to_save, f)
 
 
 if __name__ == "__main__":
     import main
-    main()
+    main.main()

@@ -6,7 +6,7 @@ import sys # Needed for clearing screen based on OS, but for simplicity using AN
 def main():
     # Clear screen at the beginning
     print("\033[H\033[J", end="")
-    
+
     try:
         # Initialize and run the controller
         c.run()
