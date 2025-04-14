@@ -5,6 +5,7 @@
 import pickle
 from datetime import date,timedelta
 import re
+import view as v
 
 FILE_PATH = "data.pkl"  # Path to the data file
 NAME_REGEX = re.compile(r"^[a-zA-Zа-яА-ЯіІїЇєЄґҐʼ'-]+( [a-zA-Zа-яА-ЯіІїЇєЄґҐʼ'-]+)*$")
@@ -39,6 +40,13 @@ class TagError(ValueError):
 class NotFoundError(Exception):
     """Exception when an item is not found."""
     pass
+
+class NoteError(Exception):
+    """Base exception class for Note and Notebook errors."""
+    def __init__(self, key, **kwargs):
+        self.key = key
+        self.kwargs = kwargs
+        super().__init__(key, **kwargs)  # For internal logging/debugging
 
 # ================ Contact Class ================
 class Contact:
@@ -210,10 +218,24 @@ class AdressBook:
 
 # ================ Note Class ================
 class Note:
+    #Constants
+    MIN_TITLE_LEN = 2
+    MAX_TITLE_LEN = 128
+    MIN_TAG_LEN = 2
+    MAX_TAG_LEN = 16
+    TAG_PATTERN = re.compile(r"^[a-zA-Z0-9]+$") #validation for letters and numbers only.
+    
+    #Id_counter - IMPORTANT:
+    # Its value should be set by the load_data_from_file function
+    # after loading the data (e.g. max(note.id for note in notes) + 1).
+    # The class itself does not manage the persistence of the counter.
     id_counter = 0 # Consider loading/saving this counter as well
 
     def __init__(self, title: str):
-        # TODO: Add validation for title length/format here or ensure it's done before creating Note
+        # --- Implementing name validation ---              
+        if not (Note.MIN_TITLE_LEN <= len(title) <= Note.MAX_TITLE_LEN):
+            # Error key with parameters
+            raise TitleError("invalid_title_length", min=Note.MIN_TITLE_LEN, max=Note.MAX_TITLE_LEN)
         self.__id    : int = Note.id_counter
         self.title   : str = title
         self.content : str = ""
@@ -224,100 +246,125 @@ class Note:
     def id(self) -> int:
         return self.__id
 
-    def __str__(self) -> str:
-        # Basic string representation
-        return f"Note(ID: {self.__id}, Title: {self.title})"
-
     def __repr__(self) -> str:
-        # Representation useful for developers/debugging
-        return f"Note(id={self.__id}, title='{self.title}', content='{self.content[:20]}...', tags={self.tags})"
+     # Representation useful for developers/debugging
+     content_preview = self.content[:20].replace('\n', '\\n') + ('...' if len(self.content) > 20 else '')
+     return f"Note(id={self.__id}, title='{self.title}', content='{content_preview}...', tags={self.tags})"
 
+    # --- The __eq__ and __hash__ methods are required for list.remove() to work correctly ---
+    def __eq__(self, other):
+        if not isinstance(other, Note):
+            return NotImplemented
+        return self.__id == other.__id
+
+    def __hash__(self):
+        return hash(self.__id)
 
 # ================ Notebook Class ================
+
 class Notebook:
-    def __init__(self):
+    def __init__(self, autosave_callback=None):
         self.notes : list[Note] = []
+        self.autosave_callback = autosave_callback # Save callback'у
+        
+    # --- Private method to call autosave ---
+    def _autosave(self):
+        """Calls the autosave callback if it's set."""
+        if self.autosave_callback and callable(self.autosave_callback):
+           self.autosave_callback()
 
     # ================ Note CRUD methods ================
     # Add note to notebook
     def add_note(self, note: Note):
-        # TODO: Check for duplicate notes? (e.g., by title) - Define policy
+        # --- Implementing duplicate name checking ---
+        title_lower = note.title.lower()
+        for existing_note in self.notes:
+            if existing_note.title.lower() == title_lower:
+                raise NoteError("duplicate_title", title=note.title) # Error key
         self.notes.append(note)
+        self._autosave() # Call autosave
 
-    # Change note title
     def change_note_title(self, note: Note, new_title: str):
-        # Validation (length 4-128) should happen in Controller/before call.
-        # TODO: Add validation here as a safeguard?
-        # ...
+        # --- Implementing new name validation ---
+        if not (Note.MIN_TITLE_LEN <= len(new_title) <= Note.MAX_TITLE_LEN):
+            raise TitleError("invalid_title_length", min=Note.MIN_TITLE_LEN, max=Note.MAX_TITLE_LEN)
+
+        # Check for duplicates (ignoring the current note)
+        new_title_lower = new_title.lower()
+        for existing_note in self.notes:
+            if existing_note.id != note.id and existing_note.title.lower() == new_title_lower:
+                 raise NoteError("duplicate_title", title=new_title) # Error key
         note.title = new_title
+        self._autosave() # Call autosave
 
-    # Change note content
     def change_note_content(self, note: Note, new_content: str):
-        # No validation specified for content, just assign
         note.content = new_content
+        self._autosave() # Call autosave
 
-    # Remove note from notebook by the note object itself
     def remove_note(self, note: Note):
-        # TODO: Handle case where note is not in list?
+        # --- Implementing deletion error handling ---
         try:
-            self.notes.remove(note)
+            self.notes.remove(note) # Uses Note.__eq__
+            self._autosave() # Call autosave AFTER successful deletion
         except ValueError:
-            raise NotFoundError("note_not_found_in_list")
+             # Generate an error with the key if the note is not in the list
+            raise NotFoundError("note_not_found", title=note.title) # Error key
 
-    # ================ Tag methods ================
+# ================ Tag methods ================
     def add_tag_to_note(self, note: Note, tag: str):
-        """Adds a validated and lowercased tag to the note if not present."""
-        # Validation (format, length 2-16) and lowercasing should happen in Controller/before call.
-        # Assume tag is pre-validated and just needs lowercasing
-        # TODO: Add validation here as a safeguard?
-        # ...
-        #     raise TagError("duplicate_tag")
+    # --- Implementing tag validation ---
+        tag_clean = tag.strip()  # Remove any leading/trailing spaces
+        if not (Note.MIN_TAG_LEN <= len(tag_clean) <= Note.MAX_TAG_LEN):
+        # If the tag length is not within the defined limits, raise an error with parameters
+            raise TagError("invalid_tag_length", min=Note.MIN_TAG_LEN, max=Note.MAX_TAG_LEN)
+        if not Note.TAG_PATTERN.match(tag_clean):
+        # If the tag format doesn't match the defined pattern, raise an error
+            raise TagError("invalid_tag_format")  # Error key
+
+        tag_lower = tag_clean.lower()  # Convert the tag to lowercase for case-insensitive comparison
+
+    # --- Check for duplicate tags ---
+    # Find any existing tags in the note that match the given tag
+        tags_repeat = [existing_tag for existing_tag in note.tags if existing_tag == tag_lower]
+
+        if tags_repeat:
+        # If the tag already exists, don't raise an error; instead, issue a warning
+            v.display_warning("tags_already_exist", tags_repeat=tags_repeat)
+
+    # If the tag is not already in the note, add it
+        if tag_lower not in note.tags:
+            note.tags.append(tag_lower)
+            note.tags.sort()  # Sort tags alphabetically for consistency
 
     def remove_tag_from_note(self, note: Note, tag: str):
-        """Removes a tag from the note (case-insensitive)."""
-        # TODO: Handle case where tag is not found
-        tag_lower = tag.lower()
+    # --- Implementing tag removal error handling ---
+        tag = tag.lower()
         try:
-            note.tags.remove(tag_lower)
+             # Check if the tag exists before deleting
+             if tag not in note.tags:
+                 raise ValueError # Raise an error if the tag is missing
+             note.tags.remove(tag)
+             self._autosave() # Call autosave AFTER successful deletion
         except ValueError:
-             raise NotFoundError("tag_not_found_in_note")
+            # Generate an error with the key if the tag is not in the note
+            raise NotFoundError("tag_not_found_in_note", tag, title=note.title) # Error key
 
     # ================ Note search methods ================
-    # Find note by partial data: title or content
     def find_notes(self, part: str) -> list[Note]:
-        result : list[Note] = []
         part = part.lower()
-        for note in self.notes:
-            if part in note.title.lower() or part in note.content.lower():
-                result.append(note)
-        return result
+        return [ note for note in self.notes if part in note.title.lower() or part in note.content.lower() ]
 
-    # Find note by title (partial or full)
-    def find_note_by_title(self, title_part: str) -> list[Note]:
-        result : list[Note] = []
-        title_part = title_part.lower()
-        for note in self.notes:
-            if title_part in note.title.lower():
-                result.append(note)
-        return result
+    def find_note_by_title(self, part: str) -> list[Note]:
+        part = part.lower()
+        return [ note for note in self.notes if part in note.title.lower() ]
 
-    # Find note by content (partial or full)
-    def find_note_by_content(self, content_part: str) -> list[Note]:
-        result : list[Note] = []
-        content_part = content_part.lower()
-        for note in self.notes:
-            if content_part in note.content.lower():
-                result.append(note)
-        return result
+    def find_note_by_content(self, part: str) -> list[Note]:
+        part = part.lower()
+        return [ note for note in self.notes if part in note.content.lower() ]
 
-    # Find note by tag (exact match, case-insensitive)
-    def find_note_by_tag(self, tag: str) -> list[Note]:
-        result : list[Note] = []
-        tag = tag.lower()
-        for note in self.notes:
-            if any(tag in t for t in note.tags):
-                result.append(note)
-        return result
+    def find_note_by_tag(self, part: str) -> list[Note]:
+        part = part.lower()
+        return [ note for note in self.notes if part in note.tags ]
 
 
 # ================ Data Persistence ================
